@@ -28,15 +28,15 @@ notion = NotionClient(auth=NOTION_TOKEN)
 
 async def add_to_notion(data: dict, user) -> None:
     username = f"@{user.username}" if user.username else user.full_name
+    telegram_str = f"{username} (id: {user.id})"
     await notion.pages.create(
         parent={"database_id": NOTION_DATABASE_ID},
         properties={
             "ФИО":       {"title": [{"text": {"content": data.get("name", "")}}]},
-            "Категория": {"select": {"name": data.get("category", "")}},
+            "Категория": {"multi_select": [{"name": data.get("category", "")}]},
             "Берпи":     {"number": int(data.get("burpees", 0))},
             "Видео":     {"url": data.get("video", "")},
-            "Telegram":  {"rich_text": [{"text": {"content": username}}]},
-            "User ID":   {"number": user.id},
+            "Telegram":  {"rich_text": [{"text": {"content": telegram_str}}]},
             "Дата":      {"date": {"start": datetime.now(timezone.utc).isoformat()}},
         },
     )
