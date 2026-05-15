@@ -82,7 +82,32 @@
       letter-spacing: 3.5px;
       color: var(--gold);
       text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .deadline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(242,196,64,0.35);
+      border-radius: 4px;
+      padding: 6px 12px;
       margin-bottom: 20px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+      background: rgba(242,196,64,0.06);
+    }
+
+    .deadline-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
     }
 
     /* ── DIVIDER ─────────────────────────────── */
@@ -322,6 +347,11 @@
     <img src="logo.png" alt="CrossFit Севастополь" width="160" height="180" fetchpriority="high" decoding="sync" />
   </div>
   <div class="header-sub">Отборочный комплекс</div>
+  <div class="deadline">
+    <span class="deadline-dot"></span>
+    Приём заявок до 30 мая
+    <span class="deadline-dot"></span>
+  </div>
 
   <div class="divider">
     <div class="divider-line"></div>
