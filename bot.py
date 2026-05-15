@@ -51,7 +51,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
 
     organizer_msg = (
-        "🏋️ *Новая заявка на соревнование*\n"
+        "🏋️ *Новая заявка*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 *ФИО:* {data.get('name', '—')}\n"
         f"{category_icon} *Категория:* {data.get('category', '—')}\n"
