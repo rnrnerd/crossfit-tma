@@ -40,15 +40,16 @@
     }
 
     .bg-statue {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 55%;
-      height: 100vh;
+      height: 100%;
       background: url('bg.png') center top / cover no-repeat;
       opacity: 0.28;
       pointer-events: none;
       z-index: 0;
+      transition: opacity 0.25s ease;
       -webkit-mask-image: linear-gradient(to left, transparent 0%, black 50%);
       mask-image: linear-gradient(to left, transparent 0%, black 50%);
     }
@@ -388,8 +389,13 @@
   tg.expand();
   tg.ready();
 
-  // Фиксируем высоту до открытия клавиатуры — фон не прыгает
-  document.documentElement.style.setProperty('--initial-vh', window.innerHeight + 'px');
+  const statue = document.querySelector('.bg-statue');
+  const baseHeight = window.innerHeight;
+
+  tg.onEvent('viewportChanged', () => {
+    const keyboardOpen = tg.viewportHeight < baseHeight - 100;
+    statue.style.opacity = keyboardOpen ? '0' : '0.28';
+  });
 
   // Category selection
   let selectedCategory = null;
