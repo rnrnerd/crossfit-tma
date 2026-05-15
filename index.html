@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Севастополь 2026</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gold:       #F2C440;
+      --gold-dark:  #C9A030;
+      --gold-dim:   rgba(242,196,64,0.12);
+      --bg:         #0D0D0D;
+      --surface:    #161616;
+      --surface2:   #1E1E1E;
+      --border:     #2A2A2A;
+      --text:       #FFFFFF;
+      --hint:       #666666;
+      --red:        #e53935;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+
+    body {
+      padding: 0 16px 40px;
+      position: relative;
+    }
+
+    .bg-statue {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 55%;
+      height: 100%;
+      background: url('bg.png') center top / cover no-repeat;
+      opacity: 0.28;
+      pointer-events: none;
+      z-index: 0;
+      -webkit-mask-image: linear-gradient(to left, transparent 0%, black 50%);
+      mask-image: linear-gradient(to left, transparent 0%, black 50%);
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      text-align: center;
+      padding: 28px 0 0;
+      position: relative;
+    }
+
+    .logo-wrap {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    .logo-wrap img {
+      width: 160px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .header-sub {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 3.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    /* ── DIVIDER ─────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 22px;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border));
+    }
+    .divider-line.right {
+      background: linear-gradient(to left, transparent, var(--border));
+    }
+
+    .divider svg { flex-shrink: 0; }
+
+    /* ── FORM ────────────────────────────────── */
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    label {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--hint);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding-left: 2px;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    input[type="number"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 16px;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      width: 100%;
+      -webkit-appearance: none;
+      font-family: inherit;
+    }
+
+    input::placeholder { color: #3A3A3A; }
+
+    input:focus {
+      border-color: var(--gold);
+      background: var(--surface2);
+    }
+
+    input.error { border-color: var(--red); }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ── CATEGORIES ──────────────────────────── */
+    .category-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .category-btn {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--hint);
+      cursor: pointer;
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 13px 4px;
+      text-align: center;
+      text-transform: uppercase;
+      transition: all 0.18s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .category-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--gold-dim);
+      opacity: 0;
+      transition: opacity 0.18s;
+    }
+
+    .category-btn:active::after { opacity: 1; }
+
+    .category-btn.selected {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #0D0D0D;
+    }
+
+    .category-group.error .category-btn:not(.selected) {
+      border-color: var(--red);
+    }
+
+    /* ── ERRORS ──────────────────────────────── */
+    .field-error {
+      color: var(--red);
+      font-size: 12px;
+      min-height: 15px;
+      padding-left: 2px;
+    }
+
+    /* ── SUBMIT ──────────────────────────────── */
+    .submit-wrap {
+      margin-top: 4px;
+      position: relative;
+    }
+
+    /* angular corner decoration */
+    .corner { position: absolute; width: 10px; height: 10px; }
+    .corner.tl { top: 0; left: 0;  border-top: 1.5px solid var(--gold); border-left: 1.5px solid var(--gold); }
+    .corner.tr { top: 0; right: 0; border-top: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); }
+    .corner.bl { bottom: 0; left: 0;  border-bottom: 1.5px solid var(--gold); border-left: 1.5px solid var(--gold); }
+    .corner.br { bottom: 0; right: 0; border-bottom: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); }
+
+    .submit-btn {
+      background: var(--gold);
+      border: none;
+      border-radius: 0;
+      color: #0D0D0D;
+      cursor: pointer;
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 17px 16px;
+      text-transform: uppercase;
+      transition: background 0.18s, transform 0.1s;
+      width: 100%;
+      position: relative;
+    }
+
+    .submit-btn:active { background: var(--gold-dark); transform: scale(0.99); }
+    .submit-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+    .submit-btn .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #0D0D0D;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .submit-btn.loading .spinner { display: block; }
+
+    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    /* ── SUCCESS ─────────────────────────────── */
+    .success-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      text-align: center;
+      gap: 0;
+      padding: 0 24px;
+    }
+
+    .success-screen.visible { display: flex; }
+    .form.hidden { display: none; }
+    .header.hidden { display: none; }
+
+    .success-shield {
+      width: 88px;
+      height: 88px;
+      margin-bottom: 24px;
+      animation: pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.4); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .success-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .success-text {
+      font-size: 14px;
+      color: var(--hint);
+      line-height: 1.6;
+      max-width: 240px;
+    }
+
+    .success-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--gold);
+      margin: 16px auto;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-statue"></div>
+
+<div class="header" id="header">
+  <div class="logo-wrap">
+    <img src="logo.png" alt="CrossFit Севастополь" />
+  </div>
+  <div class="header-sub">Отборочный комплекс</div>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+      <path d="M10 1L19 7L10 13L1 7L10 1Z" stroke="#F2C440" stroke-width="1.2" fill="none"/>
+    </svg>
+    <div class="divider-line right"></div>
+  </div>
+</div>
+
+<form class="form" id="form" novalidate>
+
+  <div class="field">
+    <label>ФИО</label>
+    <input type="text" id="name" placeholder="Иванов Иван Иванович" autocomplete="name" />
+    <span class="field-error" id="name-error"></span>
+  </div>
+
+  <div class="field">
+    <label>Категория</label>
+    <div class="category-group" id="category-group">
+      <button type="button" class="category-btn" data-value="Новички">Новички</button>
+      <button type="button" class="category-btn" data-value="Любители">Любители</button>
+      <button type="button" class="category-btn" data-value="Продвинутые">Продвинутые</button>
+    </div>
+    <span class="field-error" id="category-error"></span>
+  </div>
+
+  <div class="field">
+    <label>Количество берпи</label>
+    <input type="number" id="burpees" placeholder="например, 50" min="1" max="10000" inputmode="numeric" />
+    <span class="field-error" id="burpees-error"></span>
+  </div>
+
+  <div class="field">
+    <label>Ссылка на видео</label>
+    <input type="url" id="video" placeholder="https://..." inputmode="url" autocomplete="off" />
+    <span class="field-error" id="video-error"></span>
+  </div>
+
+  <div class="submit-wrap">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <button type="submit" class="submit-btn" id="submit-btn">
+      Отправить результат
+      <span class="spinner"></span>
+    </button>
+  </div>
+
+</form>
+
+<!-- SUCCESS -->
+<div class="success-screen" id="success-screen">
+  <img src="logo.png" alt="CrossFit Севастополь" style="width:180px;height:auto;margin-bottom:24px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
+  <div class="success-title">Спасибо!</div>
+  <div class="success-divider"></div>
+  <div class="success-text">Мы получили твою заявку.<br>До встречи на старте!</div>
+</div>
+
+<script>
+  const tg = window.Telegram.WebApp;
+  tg.expand();
+  tg.ready();
+
+  // Category selection
+  let selectedCategory = null;
+  document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedCategory = btn.dataset.value;
+      clearError('category');
+    });
+  });
+
+  function clearError(id) {
+    const el = document.getElementById(id + '-error');
+    if (el) el.textContent = '';
+    const input = document.getElementById(id);
+    if (input) input.classList.remove('error');
+    if (id === 'category') document.getElementById('category-group').classList.remove('error');
+  }
+
+  ['name', 'burpees', 'video'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => clearError(id));
+  });
+
+  function validate() {
+    let valid = true;
+
+    const name = document.getElementById('name').value.trim();
+    if (!name) {
+      document.getElementById('name-error').textContent = 'Введите имя';
+      document.getElementById('name').classList.add('error');
+      valid = false;
+    }
+
+    if (!selectedCategory) {
+      document.getElementById('category-error').textContent = 'Выберите категорию';
+      document.getElementById('category-group').classList.add('error');
+      valid = false;
+    }
+
+    const burpees = document.getElementById('burpees').value.trim();
+    if (!burpees || isNaN(burpees) || Number(burpees) < 1) {
+      document.getElementById('burpees-error').textContent = 'Укажите количество берпи';
+      document.getElementById('burpees').classList.add('error');
+      valid = false;
+    }
+
+    const video = document.getElementById('video').value.trim();
+    if (!video || !/^(https?:\/\/).+\..+/.test(video)) {
+      document.getElementById('video-error').textContent = 'Укажите ссылку (начиная с http:// или https://)';
+      document.getElementById('video').classList.add('error');
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    const payload = JSON.stringify({
+      name:     document.getElementById('name').value.trim(),
+      category: selectedCategory,
+      burpees:  Number(document.getElementById('burpees').value.trim()),
+      video:    document.getElementById('video').value.trim(),
+    });
+
+    try { tg.sendData(payload); } catch (err) { console.error(err); }
+
+    setTimeout(() => {
+      document.getElementById('header').classList.add('hidden');
+      document.getElementById('form').classList.add('hidden');
+      document.getElementById('success-screen').classList.add('visible');
+    }, 400);
+  });
+</script>
+</body>
+</html>
