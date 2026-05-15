@@ -69,7 +69,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
     await update.message.reply_text(
-        "✅ Заявка принята! Организаторы свяжутся с вами в ближайшее время.",
+        "✅ Результат принят!",
     )
 
 
