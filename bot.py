@@ -69,15 +69,15 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
     await update.message.reply_text(
-        "✅ *Заявка принята\!*\n"
+        "✅ <b>Заявка принята!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 *ФИО:* {data.get('name', '—')}\n"
-        f"{category_icon} *Категория:* {data.get('category', '—')}\n"
-        f"🔥 *Берпи:* {data.get('burpees', '—')}\n"
-        f"🎥 *Видео:* {data.get('video', '—')}\n"
+        f"👤 <b>ФИО:</b> {data.get('name', '—')}\n"
+        f"{category_icon} <b>Категория:</b> {data.get('category', '—')}\n"
+        f"🔥 <b>Берпи:</b> {data.get('burpees', '—')}\n"
+        f"🎥 <b>Видео:</b> {data.get('video', '—')}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Удачи на старте\! 💪",
-        parse_mode="MarkdownV2",
+        "Удачи на старте! 💪",
+        parse_mode="HTML",
         disable_web_page_preview=True,
     )
 
