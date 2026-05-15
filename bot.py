@@ -73,10 +73,15 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 
+async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await start(update, context)
+
+
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown))
     logger.info("Bot started")
     app.run_polling(drop_pending_updates=True)
 
