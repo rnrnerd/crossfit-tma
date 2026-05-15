@@ -183,13 +183,11 @@ async def mystatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "burpees": row["burpees"],
         "video": row["video"],
     })
-    edit_url = f"{WEBAPP_URL}?{params}"
+    separator = "&" if "?" in WEBAPP_URL else "?"
+    edit_url = f"{WEBAPP_URL}{separator}{params}"
     edit_keyboard = ReplyKeyboardMarkup(
         [[KeyboardButton(text="✏️ Редактировать заявку", web_app=WebAppInfo(url=edit_url))]],
         resize_keyboard=True,
-    )
-    await update.message.reply_text(
-        f"DEBUG url: {edit_url}",
     )
     await update.message.reply_text(
         "Хотите внести изменения?",
