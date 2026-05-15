@@ -28,8 +28,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     ]]
     await update.message.reply_text(
-        "Битва за Херсонес 2026 🔥\n"
-        "Чтобы загрузить результаты, нажми на кнопку ниже",
+        "Привет!🔥\n"
+        "Чтобы загрузить твои результаты, нажми на кнопку ниже",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
         parse_mode="Markdown",
     )
