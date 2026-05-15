@@ -106,7 +106,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     if await has_submitted(user.id):
         await update.message.reply_text(
             "⚠️ <b>Вы уже подали заявку.</b>\n\n"
-            "Если хотите внести изменения — свяжитесь с организаторами.",
+            "Если хотите внести изменения — свяжитесь с организаторами @innasevastopol",
             parse_mode="HTML",
         )
         return
@@ -159,9 +159,12 @@ async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await start(update, context)
 
 
+async def post_init(app: Application) -> None:
+    await init_db()
+
+
 def main() -> None:
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.post_init = lambda _: init_db()
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown))
