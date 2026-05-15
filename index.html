@@ -502,13 +502,13 @@
       video:    document.getElementById('video').value.trim(),
     });
 
-    try { tg.sendData(payload); } catch (err) { console.error(err); }
+    document.getElementById('header').classList.add('hidden');
+    document.getElementById('form').classList.add('hidden');
+    document.getElementById('success-screen').classList.add('visible');
 
     setTimeout(() => {
-      document.getElementById('header').classList.add('hidden');
-      document.getElementById('form').classList.add('hidden');
-      document.getElementById('success-screen').classList.add('visible');
-    }, 400);
+      try { tg.sendData(payload); } catch (err) { console.error(err); }
+    }, 2500);
   });
 </script>
 </body>
