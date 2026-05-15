@@ -274,21 +274,24 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # Уведомить организаторов
     username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
-    await context.bot.send_message(
-        chat_id=ORGANIZERS_CHAT_ID,
-        text=(
-            "🏋️ *Новая заявка*\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 *ФИО:* {data.get('name', '—')}\n"
-            f"{category_icon} *Категория:* {data.get('category', '—')}\n"
-            f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
-            f"🎥 *Видео:* {data.get('video', '—')}\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            f"📱 *Участник:* {username_part} `(id: {user.id})`"
-        ),
-        parse_mode="Markdown",
-        disable_web_page_preview=True,
-    )
+    try:
+        await context.bot.send_message(
+            chat_id=ORGANIZERS_CHAT_ID,
+            text=(
+                "🏋️ *Новая заявка*\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"👤 *ФИО:* {data.get('name', '—')}\n"
+                f"{category_icon} *Категория:* {data.get('category', '—')}\n"
+                f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
+                f"🎥 *Видео:* {data.get('video', '—')}\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"📱 *Участник:* {username_part} `(id: {user.id})`"
+            ),
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+        )
+    except Exception as e:
+        logger.error("Organizers notification error: %s", e)
 
     # Подтверждение пользователю
     await update.message.reply_text(
