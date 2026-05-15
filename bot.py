@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
-from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 load_dotenv()
@@ -22,15 +22,15 @@ CATEGORIES = {"Новички": "🟢", "Любители": "🟡", "Продв�
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[
-        InlineKeyboardButton(
-            text="📋 Подать заявку",
+        KeyboardButton(
+            text="📋 Отборочный комплекс",
             web_app=WebAppInfo(url=WEBAPP_URL),
         )
     ]]
     await update.message.reply_text(
-        "🏋️ *CrossFit Competition*\n\n"
+        "🏋️ *CrossFit Севастополь 2026*\n\n"
         "Нажмите кнопку ниже, заполните форму и отправьте свою заявку на соревнование.",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
         parse_mode="Markdown",
     )
 
