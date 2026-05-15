@@ -388,8 +388,11 @@
   tg.expand();
   tg.ready();
 
+  let maxHeight = window.innerHeight;
+
   function lockStatueHeight() {
-    document.documentElement.style.setProperty('--statue-h', window.innerHeight + 'px');
+    maxHeight = Math.max(maxHeight, window.innerHeight);
+    document.documentElement.style.setProperty('--statue-h', maxHeight + 'px');
   }
 
   lockStatueHeight();
