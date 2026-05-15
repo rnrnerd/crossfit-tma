@@ -189,6 +189,9 @@ async def mystatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         resize_keyboard=True,
     )
     await update.message.reply_text(
+        f"DEBUG url: {edit_url}",
+    )
+    await update.message.reply_text(
         "Хотите внести изменения?",
         reply_markup=edit_keyboard,
     )
