@@ -487,6 +487,27 @@
     return valid;
   }
 
+  // Edit mode — read URL params
+  const params = new URLSearchParams(window.location.search);
+  const isEditMode = params.get('mode') === 'edit';
+
+  if (isEditMode) {
+    document.querySelector('.header-sub').textContent = 'Редактировать заявку';
+    document.getElementById('submit-btn').childNodes[0].textContent = 'Сохранить изменения';
+    document.getElementById('name').value = params.get('name') || '';
+    document.getElementById('burpees').value = params.get('burpees') || '';
+    document.getElementById('video').value = params.get('video') || '';
+    const cat = params.get('category');
+    if (cat) {
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        if (btn.dataset.value === cat) {
+          btn.classList.add('selected');
+          selectedCategory = cat;
+        }
+      });
+    }
+  }
+
   document.getElementById('form').addEventListener('submit', e => {
     e.preventDefault();
     if (!validate()) return;
@@ -496,11 +517,17 @@
     btn.classList.add('loading');
 
     const payload = JSON.stringify({
+      mode:     isEditMode ? 'edit' : 'new',
       name:     document.getElementById('name').value.trim(),
       category: selectedCategory,
       burpees:  Number(document.getElementById('burpees').value.trim()),
       video:    document.getElementById('video').value.trim(),
     });
+
+    if (isEditMode) {
+      document.querySelector('.success-title').textContent = 'Обновлено!';
+      document.querySelector('.success-text').innerHTML = 'Твоя заявка успешно обновлена.<br>До встречи на старте!';
+    }
 
     document.getElementById('header').classList.add('hidden');
     document.getElementById('form').classList.add('hidden');

@@ -3,6 +3,7 @@ import json
 import logging
 import asyncpg
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 from dotenv import load_dotenv
 from notion_client import AsyncClient as NotionClient
 from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
@@ -36,25 +37,26 @@ async def init_db():
     async with db_pool.acquire() as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS submissions (
-                user_id      BIGINT PRIMARY KEY,
-                name         TEXT,
-                category     TEXT,
-                burpees      INTEGER,
-                video        TEXT,
+                user_id           BIGINT PRIMARY KEY,
+                name              TEXT,
+                category          TEXT,
+                burpees           INTEGER,
+                video             TEXT,
                 telegram_username TEXT,
-                submitted_at TIMESTAMPTZ DEFAULT NOW()
+                notion_page_id    TEXT,
+                submitted_at      TIMESTAMPTZ DEFAULT NOW()
             )
         """)
-        # Миграция: добавляем колонки если таблица уже существовала
         for col, col_type in [
             ("category", "TEXT"),
             ("burpees", "INTEGER"),
             ("video", "TEXT"),
             ("telegram_username", "TEXT"),
+            ("notion_page_id", "TEXT"),
         ]:
-            await conn.execute(f"""
-                ALTER TABLE submissions ADD COLUMN IF NOT EXISTS {col} {col_type}
-            """)
+            await conn.execute(
+                f"ALTER TABLE submissions ADD COLUMN IF NOT EXISTS {col} {col_type}"
+            )
     logger.info("Database ready")
 
 
@@ -64,24 +66,31 @@ async def has_submitted(user_id: int) -> bool:
         return row is not None
 
 
-async def save_submission(user_id: int, data: dict, username: str):
+async def get_submission(user_id: int):
+    async with db_pool.acquire() as conn:
+        return await conn.fetchrow("SELECT * FROM submissions WHERE user_id = $1", user_id)
+
+
+async def save_submission(user_id: int, data: dict, username: str, notion_page_id: str):
     async with db_pool.acquire() as conn:
         await conn.execute(
-            """INSERT INTO submissions (user_id, name, category, burpees, video, telegram_username)
-               VALUES ($1, $2, $3, $4, $5, $6)""",
-            user_id,
-            data.get("name", ""),
-            data.get("category", ""),
-            int(data.get("burpees", 0)),
-            data.get("video", ""),
-            username,
+            """INSERT INTO submissions
+               (user_id, name, category, burpees, video, telegram_username, notion_page_id)
+               VALUES ($1,$2,$3,$4,$5,$6,$7)""",
+            user_id, data.get("name", ""), data.get("category", ""),
+            int(data.get("burpees", 0)), data.get("video", ""),
+            username, notion_page_id,
         )
 
 
-async def get_submission(user_id: int):
+async def update_submission(user_id: int, data: dict):
     async with db_pool.acquire() as conn:
-        return await conn.fetchrow(
-            "SELECT * FROM submissions WHERE user_id = $1", user_id
+        await conn.execute(
+            """UPDATE submissions
+               SET name=$2, category=$3, burpees=$4, video=$5, submitted_at=NOW()
+               WHERE user_id=$1""",
+            user_id, data.get("name", ""), data.get("category", ""),
+            int(data.get("burpees", 0)), data.get("video", ""),
         )
 
 
@@ -94,33 +103,46 @@ async def get_stats():
         return total, rows
 
 
-async def add_to_notion(data: dict, user) -> None:
+async def add_to_notion(data: dict, user) -> str:
     username = f"@{user.username}" if user.username else user.full_name
-    telegram_str = f"{username} (id: {user.id})"
-    await notion.pages.create(
+    page = await notion.pages.create(
         parent={"database_id": NOTION_DATABASE_ID},
         properties={
             "ФИО":       {"title": [{"text": {"content": data.get("name", "")}}]},
             "Категория": {"multi_select": [{"name": data.get("category", "")}]},
             "Берпи":     {"number": int(data.get("burpees", 0))},
             "Видео":     {"url": data.get("video", "")},
-            "Telegram":  {"rich_text": [{"text": {"content": telegram_str}}]},
+            "Telegram":  {"rich_text": [{"text": {"content": f"{username} (id: {user.id})"}}]},
             "Дата":      {"date": {"start": datetime.now(timezone.utc).isoformat()}},
+        },
+    )
+    return page["id"]
+
+
+async def update_notion_page(page_id: str, data: dict) -> None:
+    await notion.pages.update(
+        page_id=page_id,
+        properties={
+            "ФИО":       {"title": [{"text": {"content": data.get("name", "")}}]},
+            "Категория": {"multi_select": [{"name": data.get("category", "")}]},
+            "Берпи":     {"number": int(data.get("burpees", 0))},
+            "Видео":     {"url": data.get("video", "")},
         },
     )
 
 
+def main_keyboard():
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=WEBAPP_URL))]],
+        resize_keyboard=True,
+    )
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [[
-        KeyboardButton(
-            text="📋 Загрузить результаты",
-            web_app=WebAppInfo(url=WEBAPP_URL),
-        )
-    ]]
     await update.message.reply_text(
         "Привет!🔥\n"
         "Чтобы загрузить твои результаты, нажми на кнопку ниже",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
+        reply_markup=main_keyboard(),
         parse_mode="Markdown",
     )
 
@@ -153,25 +175,38 @@ async def mystatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         disable_web_page_preview=True,
     )
 
+    # Кнопка редактирования с предзаполненными данными
+    params = urlencode({
+        "mode": "edit",
+        "name": row["name"],
+        "category": row["category"],
+        "burpees": row["burpees"],
+        "video": row["video"],
+    })
+    edit_url = f"{WEBAPP_URL}?{params}"
+    edit_keyboard = ReplyKeyboardMarkup(
+        [[KeyboardButton(text="✏️ Редактировать заявку", web_app=WebAppInfo(url=edit_url))]],
+        resize_keyboard=True,
+    )
+    await update.message.reply_text(
+        "Хотите внести изменения?",
+        reply_markup=edit_keyboard,
+    )
+
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
-
     if user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔️ У вас нет доступа к этой команде.")
         return
 
     total, rows = await get_stats()
-
     lines = [f"📊 <b>Статистика заявок</b>\n━━━━━━━━━━━━━━━━━━━━\n📝 Всего: <b>{total}</b>\n"]
     for row in rows:
         icon = CATEGORIES.get(row["category"], "⚪️")
         lines.append(f"{icon} {row['category']}: <b>{row['cnt']}</b>")
 
-    await update.message.reply_text(
-        "\n".join(lines),
-        parse_mode="HTML",
-    )
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
 
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -181,15 +216,42 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        logger.error("Invalid JSON from WebApp")
         await update.message.reply_text("Ошибка обработки заявки. Попробуйте ещё раз.")
         return
 
     user = update.effective_user
     username = f"@{user.username}" if user.username else user.full_name
     category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
+    is_edit = data.get("mode") == "edit"
 
-    # Проверка дубля
+    if is_edit:
+        # Обновить существующую заявку
+        await update_submission(user.id, data)
+
+        row = await get_submission(user.id)
+        if row and row["notion_page_id"]:
+            try:
+                await update_notion_page(row["notion_page_id"], data)
+            except Exception as e:
+                logger.error("Notion update error: %s", e)
+
+        await update.message.reply_text(
+            "✅ <b>Заявка обновлена!</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>ФИО:</b> {data.get('name', '—')}\n"
+            f"{category_icon} <b>Категория:</b> {data.get('category', '—')}\n"
+            f"🔥 <b>Берпи:</b> {data.get('burpees', '—')}\n"
+            f"🎥 <b>Видео:</b> {data.get('video', '—')}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Удачи на старте! 💪\n\n"
+            "Посмотреть свою заявку: /mystatus",
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=main_keyboard(),
+        )
+        return
+
+    # Новая заявка — проверка дубля
     if await has_submitted(user.id):
         await update.message.reply_text(
             "⚠️ <b>Вы уже подали заявку.</b>\n\n"
@@ -198,31 +260,31 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    # Сохранить в PostgreSQL
-    await save_submission(user.id, data, username)
-
     # Сохранить в Notion
+    notion_page_id = ""
     try:
-        await add_to_notion(data, user)
+        notion_page_id = await add_to_notion(data, user)
         logger.info("Saved to Notion: user_id=%s", user.id)
     except Exception as e:
         logger.error("Notion error: %s", e)
 
-    # Отправить организаторам
+    # Сохранить в PostgreSQL
+    await save_submission(user.id, data, username, notion_page_id)
+
+    # Уведомить организаторов
     username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
-    organizer_msg = (
-        "🏋️ *Новая заявка*\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 *ФИО:* {data.get('name', '—')}\n"
-        f"{category_icon} *Категория:* {data.get('category', '—')}\n"
-        f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
-        f"🎥 *Видео:* {data.get('video', '—')}\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"📱 *Участник:* {username_part} `(id: {user.id})`"
-    )
     await context.bot.send_message(
         chat_id=ORGANIZERS_CHAT_ID,
-        text=organizer_msg,
+        text=(
+            "🏋️ *Новая заявка*\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 *ФИО:* {data.get('name', '—')}\n"
+            f"{category_icon} *Категория:* {data.get('category', '—')}\n"
+            f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
+            f"🎥 *Видео:* {data.get('video', '—')}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"📱 *Участник:* {username_part} `(id: {user.id})`"
+        ),
         parse_mode="Markdown",
         disable_web_page_preview=True,
     )
