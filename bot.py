@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import asyncpg
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from notion_client import AsyncClient as NotionClient
@@ -20,10 +21,40 @@ ORGANIZERS_CHAT_ID  = os.environ["ORGANIZERS_CHAT_ID"]
 WEBAPP_URL          = os.environ["WEBAPP_URL"]
 NOTION_TOKEN        = os.environ["NOTION_TOKEN"]
 NOTION_DATABASE_ID  = os.environ["NOTION_DATABASE_ID"]
+DATABASE_URL        = os.environ["DATABASE_URL"]
 
 CATEGORIES = {"Новички": "🟢", "Любители": "🟡", "Продвинутые": "🔴"}
 
 notion = NotionClient(auth=NOTION_TOKEN)
+db_pool = None
+
+
+async def init_db():
+    global db_pool
+    db_pool = await asyncpg.create_pool(DATABASE_URL)
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS submissions (
+                user_id BIGINT PRIMARY KEY,
+                name    TEXT,
+                submitted_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+    logger.info("Database ready")
+
+
+async def has_submitted(user_id: int) -> bool:
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT 1 FROM submissions WHERE user_id = $1", user_id)
+        return row is not None
+
+
+async def save_submission(user_id: int, name: str):
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO submissions (user_id, name) VALUES ($1, $2)",
+            user_id, name
+        )
 
 
 async def add_to_notion(data: dict, user) -> None:
@@ -69,8 +100,19 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     user = update.effective_user
-    username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
     category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
+
+    # Проверка дубля
+    if await has_submitted(user.id):
+        await update.message.reply_text(
+            "⚠️ <b>Вы уже подали заявку.</b>\n\n"
+            "Если хотите внести изменения — свяжитесь с организаторами.",
+            parse_mode="HTML",
+        )
+        return
+
+    # Сохранить в PostgreSQL
+    await save_submission(user.id, data.get("name", ""))
 
     # Сохранить в Notion
     try:
@@ -80,6 +122,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.error("Notion error: %s", e)
 
     # Отправить организаторам
+    username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
     organizer_msg = (
         "🏋️ *Новая заявка*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -118,6 +161,7 @@ async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
+    app.post_init = lambda _: init_db()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown))
