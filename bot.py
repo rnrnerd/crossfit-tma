@@ -236,7 +236,8 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"🔥 <b>Берпи:</b> {data.get('burpees', '—')}\n"
         f"🎥 <b>Видео:</b> {data.get('video', '—')}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Удачи на старте! 💪",
+        "Удачи на старте! 💪\n\n"
+        "Посмотреть свою заявку: /mystatus",
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
