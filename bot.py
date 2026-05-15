@@ -1,7 +1,9 @@
 import os
 import json
 import logging
+from datetime import datetime, timezone
 from dotenv import load_dotenv
+from notion_client import AsyncClient as NotionClient
 from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -13,11 +15,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-ORGANIZERS_CHAT_ID = os.environ["ORGANIZERS_CHAT_ID"]
-WEBAPP_URL = os.environ["WEBAPP_URL"]
+BOT_TOKEN           = os.environ["BOT_TOKEN"]
+ORGANIZERS_CHAT_ID  = os.environ["ORGANIZERS_CHAT_ID"]
+WEBAPP_URL          = os.environ["WEBAPP_URL"]
+NOTION_TOKEN        = os.environ["NOTION_TOKEN"]
+NOTION_DATABASE_ID  = os.environ["NOTION_DATABASE_ID"]
 
 CATEGORIES = {"Новички": "🟢", "Любители": "🟡", "Продвинутые": "🔴"}
+
+notion = NotionClient(auth=NOTION_TOKEN)
+
+
+async def add_to_notion(data: dict, user) -> None:
+    username = f"@{user.username}" if user.username else user.full_name
+    await notion.pages.create(
+        parent={"database_id": NOTION_DATABASE_ID},
+        properties={
+            "ФИО":       {"title": [{"text": {"content": data.get("name", "")}}]},
+            "Категория": {"select": {"name": data.get("category", "")}},
+            "Берпи":     {"number": int(data.get("burpees", 0))},
+            "Видео":     {"url": data.get("video", "")},
+            "Telegram":  {"rich_text": [{"text": {"content": username}}]},
+            "User ID":   {"number": user.id},
+            "Дата":      {"date": {"start": datetime.now(timezone.utc).isoformat()}},
+        },
+    )
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -50,6 +72,14 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
     username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
     category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
 
+    # Сохранить в Notion
+    try:
+        await add_to_notion(data, user)
+        logger.info("Saved to Notion: user_id=%s", user.id)
+    except Exception as e:
+        logger.error("Notion error: %s", e)
+
+    # Отправить организаторам
     organizer_msg = (
         "🏋️ *Новая заявка*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -60,7 +90,6 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"📱 *Участник:* {username_part} `(id: {user.id})`"
     )
-
     await context.bot.send_message(
         chat_id=ORGANIZERS_CHAT_ID,
         text=organizer_msg,
@@ -68,6 +97,7 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
         disable_web_page_preview=True,
     )
 
+    # Подтверждение пользователю
     await update.message.reply_text(
         "✅ <b>Заявка принята!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
