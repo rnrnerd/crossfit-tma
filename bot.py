@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import asyncpg
+from html import escape
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from dotenv import load_dotenv
@@ -174,7 +175,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if row:
         category_icon = CATEGORIES.get(row["category"], "⚪️")
         submitted_at  = row["submitted_at"].strftime("%d.%m.%Y %H:%M")
-        await update.message.reply_text(
+        text = (
             "📋 <b>Твоя заявка</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>ФИО:</b> {row['name']}\n"
@@ -182,11 +183,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"🔥 <b>Берпи:</b> {row['burpees']}\n"
             f"🎥 <b>Видео:</b> {row['video']}\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            f"🕐 Подана: {submitted_at}",
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-            reply_markup=edit_keyboard(row),
+            f"🕐 Подана: {submitted_at}"
         )
+        try:
+            await update.message.reply_text(
+                text, parse_mode="HTML", disable_web_page_preview=True,
+                reply_markup=edit_keyboard(row),
+            )
+        except Exception:
+            await update.message.reply_text(
+                text, parse_mode="HTML", disable_web_page_preview=True,
+                reply_markup=main_keyboard(),
+            )
         return
 
     await update.message.reply_text(
@@ -295,21 +303,20 @@ async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await save_submission(user.id, data, username, notion_page_id)
 
-    username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
+    username_part = f"@{user.username}" if user.username else f"{user.full_name} (id: {user.id})"
     try:
         await context.bot.send_message(
             chat_id=ORGANIZERS_CHAT_ID,
             text=(
-                "🏋️ *Новая заявка*\n"
+                "🏋️ Новая заявка\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 *ФИО:* {data.get('name', '—')}\n"
-                f"{category_icon} *Категория:* {data.get('category', '—')}\n"
-                f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
-                f"🎥 *Видео:* {data.get('video', '—')}\n"
+                f"👤 ФИО: {data.get('name', '—')}\n"
+                f"{category_icon} Категория: {data.get('category', '—')}\n"
+                f"🔥 Количество берпи: {data.get('burpees', '—')}\n"
+                f"🎥 Видео: {data.get('video', '—')}\n"
                 "━━━━━━━━━━━━━━━━━━━━\n"
-                f"📱 *Участник:* {username_part} `(id: {user.id})`"
+                f"📱 Участник: {username_part} (id: {user.id})"
             ),
-            parse_mode="Markdown",
             disable_web_page_preview=True,
         )
     except Exception as e:
