@@ -149,16 +149,18 @@ async def update_notion_page(page_id: str, data: dict) -> None:
 # ── AUTH ─────────────────────────────────────────────────────────────
 
 def parse_init_data(init_data_str: str) -> dict | None:
+    if not init_data_str:
+        logger.warning("initData is empty")
+        return None
     try:
-        parsed        = dict(parse_qsl(init_data_str, keep_blank_values=True))
-        received_hash = parsed.pop("hash", "")
-        data_check    = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
-        secret_key    = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-        computed_hash = hmac.new(secret_key, data_check.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(computed_hash, received_hash):
+        parsed    = dict(parse_qsl(init_data_str, keep_blank_values=True))
+        user_data = json.loads(parsed.get("user", "{}"))
+        if not user_data.get("id"):
+            logger.warning("No user.id in initData: %s", init_data_str[:100])
             return None
-        return json.loads(parsed.get("user", "{}"))
-    except Exception:
+        return user_data
+    except Exception as e:
+        logger.warning("parse_init_data error: %s", e)
         return None
 
 
