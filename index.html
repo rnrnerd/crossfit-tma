@@ -301,13 +301,6 @@
     .form.hidden { display: none; }
     .header.hidden { display: none; }
 
-    .success-shield {
-      width: 88px;
-      height: 88px;
-      margin-bottom: 24px;
-      animation: pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;
-    }
-
     @keyframes pop {
       from { transform: scale(0.4); opacity: 0; }
       to   { transform: scale(1);   opacity: 1; }
@@ -336,6 +329,61 @@
       background: var(--gold);
       margin: 16px auto;
     }
+
+    .success-data {
+      width: 100%;
+      max-width: 320px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin: 16px 0 24px;
+      text-align: left;
+      font-size: 14px;
+      line-height: 2;
+      color: var(--text);
+    }
+
+    .success-data span { color: var(--hint); }
+
+    .success-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .success-btn {
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 14px 16px;
+      border-radius: 0;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.18s, transform 0.1s;
+    }
+
+    .success-btn:active { transform: scale(0.99); }
+
+    .success-btn.primary {
+      background: var(--gold);
+      color: #0D0D0D;
+    }
+
+    .success-btn.primary:active { background: var(--gold-dark); }
+
+    .success-btn.secondary {
+      background: transparent;
+      color: var(--hint);
+      border: 1px solid var(--border);
+    }
+
+    .success-btn.secondary:active { background: var(--surface); }
   </style>
 </head>
 <body>
@@ -407,10 +455,15 @@
 
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
-  <img src="logo.png" alt="CrossFit Севастополь" style="width:180px;height:auto;margin-bottom:24px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
-  <div class="success-title">Спасибо!</div>
+  <img src="logo.png" alt="CrossFit Севастополь" style="width:140px;height:auto;margin-bottom:20px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
+  <div class="success-title" id="success-title">Спасибо!</div>
   <div class="success-divider"></div>
-  <div class="success-text">Мы получили твою заявку.<br>До встречи на старте!</div>
+  <div class="success-text" id="success-text">Мы получили твою заявку.<br>До встречи на старте!</div>
+  <div class="success-data" id="success-data"></div>
+  <div class="success-actions">
+    <button class="success-btn primary" id="edit-again-btn">✏️ Редактировать заявку</button>
+    <button class="success-btn secondary" id="close-btn">Закрыть</button>
+  </div>
 </div>
 
 <script>
@@ -419,20 +472,22 @@
   tg.ready();
 
   let maxHeight = window.innerHeight;
-
   function lockStatueHeight() {
     maxHeight = Math.max(maxHeight, window.innerHeight);
     document.documentElement.style.setProperty('--statue-h', maxHeight + 'px');
   }
-
   lockStatueHeight();
-
   tg.onEvent('viewportChanged', ({ isStateStable }) => {
     if (isStateStable) lockStatueHeight();
   });
 
-  // Category selection
-  let selectedCategory = null;
+  // Читаем URL-параметры
+  const urlParams   = new URLSearchParams(window.location.search);
+  const apiUrl      = urlParams.get('api_url') || '';
+  let   isEditMode  = urlParams.get('mode') === 'edit';
+  let   selectedCategory = null;
+
+  // Выбор категории
   document.querySelectorAll('.category-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
@@ -456,86 +511,113 @@
 
   function validate() {
     let valid = true;
-
     const name = document.getElementById('name').value.trim();
     if (!name) {
       document.getElementById('name-error').textContent = 'Введите имя';
       document.getElementById('name').classList.add('error');
       valid = false;
     }
-
     if (!selectedCategory) {
       document.getElementById('category-error').textContent = 'Выберите категорию';
       document.getElementById('category-group').classList.add('error');
       valid = false;
     }
-
     const burpees = document.getElementById('burpees').value.trim();
     if (!burpees || isNaN(burpees) || Number(burpees) < 1) {
       document.getElementById('burpees-error').textContent = 'Укажите количество берпи';
       document.getElementById('burpees').classList.add('error');
       valid = false;
     }
-
     const video = document.getElementById('video').value.trim();
     if (!video || !/^(https?:\/\/).+\..+/.test(video)) {
       document.getElementById('video-error').textContent = 'Укажите ссылку (начиная с http:// или https://)';
       document.getElementById('video').classList.add('error');
       valid = false;
     }
-
     return valid;
   }
 
-  // Edit mode — read URL params
-  const params = new URLSearchParams(window.location.search);
-  const isEditMode = params.get('mode') === 'edit';
-
-  if (isEditMode) {
+  // Предзаполнение в режиме редактирования
+  function applyEditMode() {
     document.querySelector('.header-sub').textContent = 'Редактировать заявку';
     document.getElementById('submit-btn').childNodes[0].textContent = 'Сохранить изменения';
-    document.getElementById('name').value = params.get('name') || '';
-    document.getElementById('burpees').value = params.get('burpees') || '';
-    document.getElementById('video').value = params.get('video') || '';
-    const cat = params.get('category');
+    document.getElementById('name').value    = urlParams.get('name')    || '';
+    document.getElementById('burpees').value = urlParams.get('burpees') || '';
+    document.getElementById('video').value   = urlParams.get('video')   || '';
+    const cat = urlParams.get('category');
     if (cat) {
       document.querySelectorAll('.category-btn').forEach(btn => {
-        if (btn.dataset.value === cat) {
-          btn.classList.add('selected');
-          selectedCategory = cat;
-        }
+        if (btn.dataset.value === cat) { btn.classList.add('selected'); selectedCategory = cat; }
       });
     }
   }
 
-  document.getElementById('form').addEventListener('submit', e => {
+  if (isEditMode) applyEditMode();
+
+  // Показать экран успеха
+  function showSuccess(data, editMode) {
+    const icons = { 'Новички': '🟢', 'Любители': '🟡', 'Продвинутые': '🔴' };
+    document.getElementById('success-title').textContent = editMode ? 'Обновлено!' : 'Спасибо!';
+    document.getElementById('success-text').innerHTML    = editMode
+      ? 'Твоя заявка успешно обновлена.<br>До встречи на старте!'
+      : 'Мы получили твою заявку.<br>До встречи на старте!';
+    document.getElementById('success-data').innerHTML =
+      `<span>ФИО</span><br>${data.name}<br><br>` +
+      `<span>Категория</span><br>${icons[data.category] || ''} ${data.category}<br><br>` +
+      `<span>Берпи</span><br>${data.burpees}<br><br>` +
+      `<span>Видео</span><br>${data.video}`;
+    document.getElementById('header').classList.add('hidden');
+    document.getElementById('form').classList.add('hidden');
+    document.getElementById('success-screen').classList.add('visible');
+  }
+
+  // Вернуться к форме для редактирования
+  document.getElementById('edit-again-btn').addEventListener('click', () => {
+    isEditMode = true;
+    document.getElementById('success-screen').classList.remove('visible');
+    document.getElementById('header').classList.remove('hidden');
+    document.getElementById('form').classList.remove('hidden');
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+    document.querySelector('.header-sub').textContent = 'Редактировать заявку';
+    submitBtn.childNodes[0].textContent = 'Сохранить изменения';
+  });
+
+  document.getElementById('close-btn').addEventListener('click', () => tg.close());
+
+  // Отправка формы
+  document.getElementById('form').addEventListener('submit', async e => {
     e.preventDefault();
     if (!validate()) return;
 
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true;
-    btn.classList.add('loading');
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
 
-    const payload = JSON.stringify({
+    const data = {
       mode:     isEditMode ? 'edit' : 'new',
       name:     document.getElementById('name').value.trim(),
       category: selectedCategory,
       burpees:  Number(document.getElementById('burpees').value.trim()),
       video:    document.getElementById('video').value.trim(),
-    });
+    };
 
-    if (isEditMode) {
-      document.querySelector('.success-title').textContent = 'Обновлено!';
-      document.querySelector('.success-text').innerHTML = 'Твоя заявка успешно обновлена.<br>До встречи на старте!';
+    try {
+      const res = await fetch(`${apiUrl}/api/submit`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ initData: tg.initData, data }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'error');
+      showSuccess(data, isEditMode);
+    } catch (err) {
+      console.error(err);
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('loading');
+      alert('Ошибка при отправке. Попробуйте ещё раз.');
     }
-
-    document.getElementById('header').classList.add('hidden');
-    document.getElementById('form').classList.add('hidden');
-    document.getElementById('success-screen').classList.add('visible');
-
-    setTimeout(() => {
-      try { tg.sendData(payload); } catch (err) { console.error(err); }
-    }, 2500);
   });
 </script>
 </body>
