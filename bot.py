@@ -182,6 +182,9 @@ async def api_submit(request: aiohttp_web.Request) -> aiohttp_web.Response:
     except Exception:
         return aiohttp_web.json_response({"ok": False, "error": "invalid_json"}, status=400, headers=CORS)
 
+    logger.info("api_submit body keys: %s", list(body.keys()))
+    logger.info("initData value: %r", body.get("initData", "")[:120])
+
     user_info = parse_init_data(body.get("initData", ""))
     if not user_info:
         return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401, headers=CORS)
