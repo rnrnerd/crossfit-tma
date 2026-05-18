@@ -455,10 +455,11 @@
 
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
-  <img src="logo.png" alt="CrossFit Севастополь" style="width:160px;height:auto;margin-bottom:24px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
-  <div class="success-title" id="success-title">Спасибо!</div>
+  <img src="logo.png" alt="CrossFit Севастополь" style="width:130px;height:auto;margin-bottom:20px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
+  <div class="success-title" id="success-title">Проверь заявку</div>
   <div class="success-divider"></div>
-  <div class="success-text" id="success-text">Мы получили твою заявку.<br>До встречи на старте!</div>
+  <div class="success-text" id="success-text">Всё верно? Нажми кнопку<br>ниже чтобы отправить.</div>
+  <div class="success-data" id="success-data"></div>
 </div>
 
 <script>
@@ -547,6 +548,32 @@
 
   if (isEditMode) applyEditMode();
 
+  const ICONS = { 'Новички': '🟢', 'Любители': '🟡', 'Продвинутые': '🔴' };
+  let pendingPayload = null;
+
+  tg.MainButton.setParams({
+    color:      '#F2C440',
+    text_color: '#0D0D0D',
+  });
+
+  tg.MainButton.onClick(() => {
+    tg.MainButton.hide();
+    tg.BackButton.hide();
+    try { tg.sendData(pendingPayload); } catch (err) { console.error(err); }
+  });
+
+  tg.BackButton.onClick(() => {
+    tg.BackButton.hide();
+    tg.MainButton.hide();
+    pendingPayload = null;
+    document.getElementById('success-screen').classList.remove('visible');
+    document.getElementById('header').classList.remove('hidden');
+    document.getElementById('form').classList.remove('hidden');
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  });
+
   document.getElementById('form').addEventListener('submit', e => {
     e.preventDefault();
     if (!validate()) return;
@@ -555,26 +582,33 @@
     btn.disabled = true;
     btn.classList.add('loading');
 
-    const payload = JSON.stringify({
+    const data = {
       mode:     isEditMode ? 'edit' : 'new',
       name:     document.getElementById('name').value.trim(),
       category: selectedCategory,
       burpees:  Number(document.getElementById('burpees').value.trim()),
       video:    document.getElementById('video').value.trim(),
-    });
+    };
 
-    document.getElementById('success-title').textContent = isEditMode ? 'Обновлено!' : 'Спасибо!';
+    pendingPayload = JSON.stringify(data);
+
+    document.getElementById('success-title').textContent = isEditMode ? 'Проверь изменения' : 'Проверь заявку';
     document.getElementById('success-text').innerHTML    = isEditMode
-      ? 'Твоя заявка успешно обновлена.<br>До встречи на старте!'
-      : 'Мы получили твою заявку.<br>До встречи на старте!';
+      ? 'Всё верно? Нажми кнопку ниже чтобы сохранить.'
+      : 'Всё верно? Нажми кнопку ниже чтобы отправить.';
+    document.getElementById('success-data').innerHTML =
+      `<span>ФИО</span><br>${data.name}<br><br>` +
+      `<span>Категория</span><br>${ICONS[data.category] || ''} ${data.category}<br><br>` +
+      `<span>Берпи</span><br>${data.burpees}<br><br>` +
+      `<span>Видео</span><br>${data.video}`;
 
     document.getElementById('header').classList.add('hidden');
     document.getElementById('form').classList.add('hidden');
     document.getElementById('success-screen').classList.add('visible');
 
-    setTimeout(() => {
-      try { tg.sendData(payload); } catch (err) { console.error(err); }
-    }, 1500);
+    tg.MainButton.setText(isEditMode ? '✓ Сохранить изменения' : '✓ Отправить заявку');
+    tg.MainButton.show();
+    tg.BackButton.show();
   });
 </script>
 </body>
