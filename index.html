@@ -483,7 +483,7 @@
 
   // Читаем URL-параметры
   const urlParams   = new URLSearchParams(window.location.search);
-  const apiUrl      = urlParams.get('api_url') || '';
+  const apiUrl      = urlParams.get('api_url') || 'https://crossfit-tma-production.up.railway.app';
   let   isEditMode  = urlParams.get('mode') === 'edit';
   let   selectedCategory = null;
 
@@ -604,6 +604,8 @@
     };
 
     try {
+      const debugInfo = `apiUrl=${apiUrl}\ninitData=${tg.initData ? 'OK' : 'EMPTY'}\nuserId=${tg.initDataUnsafe?.user?.id}`;
+      console.log(debugInfo);
       const res = await fetch(`${apiUrl}/api/submit`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
