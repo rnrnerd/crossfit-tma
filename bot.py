@@ -2,13 +2,10 @@ import os
 import json
 import logging
 import asyncpg
-import hmac
-import hashlib
 from datetime import datetime, timezone
-from urllib.parse import urlencode, parse_qsl
+from urllib.parse import urlencode
 from dotenv import load_dotenv
 from notion_client import AsyncClient as NotionClient
-from aiohttp import web as aiohttp_web
 from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -26,16 +23,12 @@ WEBAPP_URL         = os.environ["WEBAPP_URL"]
 NOTION_TOKEN       = os.environ["NOTION_TOKEN"]
 NOTION_DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
 DATABASE_URL       = os.environ["DATABASE_URL"]
-API_URL            = os.environ["API_URL"]
 ADMIN_IDS          = set(int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip())
-API_PORT           = int(os.getenv("PORT", 8080))
 
 CATEGORIES = {"Новички": "🟢", "Любители": "🟡", "Продвинутые": "🔴"}
 
-notion     = NotionClient(auth=NOTION_TOKEN)
-db_pool    = None
-tg_bot     = None
-web_runner = None
+notion  = NotionClient(auth=NOTION_TOKEN)
+db_pool = None
 
 
 # ── DB ───────────────────────────────────────────────────────────────
@@ -119,7 +112,8 @@ async def get_stats():
 
 # ── NOTION ───────────────────────────────────────────────────────────
 
-async def add_to_notion(data: dict, username: str, user_id: int) -> str:
+async def add_to_notion(data: dict, user) -> str:
+    username = f"@{user.username}" if user.username else user.full_name
     page = await notion.pages.create(
         parent={"database_id": NOTION_DATABASE_ID},
         properties={
@@ -127,7 +121,7 @@ async def add_to_notion(data: dict, username: str, user_id: int) -> str:
             "Категория": {"multi_select": [{"name": data.get("category", "")}]},
             "Берпи":     {"number": int(data.get("burpees", 0))},
             "Видео":     {"url": data.get("video", "")},
-            "Telegram":  {"rich_text": [{"text": {"content": f"{username} (id: {user_id})"}}]},
+            "Telegram":  {"rich_text": [{"text": {"content": f"{username} (id: {user.id})"}}]},
             "Дата":      {"date": {"start": datetime.now(timezone.utc).isoformat()}},
         },
     )
@@ -146,130 +140,25 @@ async def update_notion_page(page_id: str, data: dict) -> None:
     )
 
 
-# ── AUTH ─────────────────────────────────────────────────────────────
-
-def parse_init_data(init_data_str: str) -> dict | None:
-    if not init_data_str:
-        logger.warning("initData is empty")
-        return None
-    try:
-        parsed    = dict(parse_qsl(init_data_str, keep_blank_values=True))
-        user_data = json.loads(parsed.get("user", "{}"))
-        if not user_data.get("id"):
-            logger.warning("No user.id in initData: %s", init_data_str[:100])
-            return None
-        return user_data
-    except Exception as e:
-        logger.warning("parse_init_data error: %s", e)
-        return None
-
-
-# ── HTTP API ──────────────────────────────────────────────────────────
-
-CORS = {
-    "Access-Control-Allow-Origin":  "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-}
-
-
-async def api_submit(request: aiohttp_web.Request) -> aiohttp_web.Response:
-    if request.method == "OPTIONS":
-        return aiohttp_web.Response(headers=CORS)
-
-    try:
-        body = await request.json()
-    except Exception:
-        return aiohttp_web.json_response({"ok": False, "error": "invalid_json"}, status=400, headers=CORS)
-
-    logger.info("api_submit body keys: %s", list(body.keys()))
-    logger.info("initData value: %r", body.get("initData", "")[:120])
-
-    user_info = parse_init_data(body.get("initData", ""))
-    if not user_info:
-        user_id_fallback = body.get("userId")
-        if not user_id_fallback:
-            return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401, headers=CORS)
-        logger.warning("initData empty, using userId fallback: %s", user_id_fallback)
-        user_info = {"id": int(user_id_fallback)}
-
-    user_id  = user_info["id"]
-    data     = body.get("data", {})
-    is_edit  = data.get("mode") == "edit"
-
-    if is_edit:
-        await update_submission(user_id, data)
-        row = await get_submission(user_id)
-        if row and row["notion_page_id"]:
-            try:
-                await update_notion_page(row["notion_page_id"], data)
-            except Exception as e:
-                logger.error("Notion update error: %s", e)
-        return aiohttp_web.json_response({"ok": True}, headers=CORS)
-
-    if await has_submitted(user_id):
-        return aiohttp_web.json_response({"ok": False, "error": "already_submitted"}, headers=CORS)
-
-    username = f"@{user_info['username']}" if user_info.get("username") else user_info.get("first_name", str(user_id))
-
-    notion_page_id = ""
-    try:
-        notion_page_id = await add_to_notion(data, username, user_id)
-        logger.info("Saved to Notion: user_id=%s", user_id)
-    except Exception as e:
-        logger.error("Notion error: %s", e)
-
-    await save_submission(user_id, data, username, notion_page_id)
-
-    category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
-    username_part = f"@{user_info['username']}" if user_info.get("username") else f"{user_info.get('first_name', '')} (id: {user_id})"
-    try:
-        await tg_bot.send_message(
-            chat_id=ORGANIZERS_CHAT_ID,
-            text=(
-                "🏋️ *Новая заявка*\n"
-                "━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 *ФИО:* {data.get('name', '—')}\n"
-                f"{category_icon} *Категория:* {data.get('category', '—')}\n"
-                f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
-                f"🎥 *Видео:* {data.get('video', '—')}\n"
-                "━━━━━━━━━━━━━━━━━━━━\n"
-                f"📱 *Участник:* {username_part} `(id: {user_id})`"
-            ),
-            parse_mode="Markdown",
-            disable_web_page_preview=True,
-        )
-    except Exception as e:
-        logger.error("Organizers notification error: %s", e)
-
-    return aiohttp_web.json_response({"ok": True}, headers=CORS)
-
-
 # ── KEYBOARDS ────────────────────────────────────────────────────────
-
-def _webapp_url(extra_params: dict = None) -> str:
-    params = {"api_url": API_URL}
-    if extra_params:
-        params.update(extra_params)
-    sep = "&" if "?" in WEBAPP_URL else "?"
-    return f"{WEBAPP_URL}{sep}{urlencode(params)}"
-
 
 def main_keyboard():
     return ReplyKeyboardMarkup(
-        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=_webapp_url()))]],
+        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=WEBAPP_URL))]],
         resize_keyboard=True,
     )
 
 
 def edit_keyboard(row):
-    edit_url = _webapp_url({
+    params = urlencode({
         "mode":     "edit",
         "name":     row["name"],
         "category": row["category"],
         "burpees":  row["burpees"],
         "video":    row["video"],
     })
+    sep      = "&" if "?" in WEBAPP_URL else "?"
+    edit_url = f"{WEBAPP_URL}{sep}{params}"
     return ReplyKeyboardMarkup(
         [[KeyboardButton(text="✏️ Редактировать заявку", web_app=WebAppInfo(url=edit_url))]],
         resize_keyboard=True,
@@ -350,6 +239,97 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("\n".join(lines), parse_mode="HTML")
 
 
+async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    raw = update.message.web_app_data.data
+    logger.info("Received web_app_data: %s", raw)
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        await update.message.reply_text("Ошибка обработки заявки. Попробуйте ещё раз.")
+        return
+
+    user          = update.effective_user
+    username      = f"@{user.username}" if user.username else user.full_name
+    category_icon = CATEGORIES.get(data.get("category", ""), "⚪️")
+    is_edit       = data.get("mode") == "edit"
+
+    if is_edit:
+        await update_submission(user.id, data)
+        row = await get_submission(user.id)
+        if row and row["notion_page_id"]:
+            try:
+                await update_notion_page(row["notion_page_id"], data)
+            except Exception as e:
+                logger.error("Notion update error: %s", e)
+        await update.message.reply_text(
+            "✅ <b>Заявка обновлена!</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>ФИО:</b> {data.get('name', '—')}\n"
+            f"{category_icon} <b>Категория:</b> {data.get('category', '—')}\n"
+            f"🔥 <b>Берпи:</b> {data.get('burpees', '—')}\n"
+            f"🎥 <b>Видео:</b> {data.get('video', '—')}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Удачи на старте! 💪\n\n"
+            "Посмотреть заявку: /mystatus",
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=main_keyboard(),
+        )
+        return
+
+    if await has_submitted(user.id):
+        await update.message.reply_text(
+            "⚠️ <b>Вы уже подали заявку.</b>\n\n"
+            "Чтобы внести изменения — нажмите /mystatus",
+            parse_mode="HTML",
+        )
+        return
+
+    notion_page_id = ""
+    try:
+        notion_page_id = await add_to_notion(data, user)
+        logger.info("Saved to Notion: user_id=%s", user.id)
+    except Exception as e:
+        logger.error("Notion error: %s", e)
+
+    await save_submission(user.id, data, username, notion_page_id)
+
+    username_part = f"@{user.username}" if user.username else f"[{user.full_name}](tg://user?id={user.id})"
+    try:
+        await context.bot.send_message(
+            chat_id=ORGANIZERS_CHAT_ID,
+            text=(
+                "🏋️ *Новая заявка*\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"👤 *ФИО:* {data.get('name', '—')}\n"
+                f"{category_icon} *Категория:* {data.get('category', '—')}\n"
+                f"🔥 *Количество берпи:* {data.get('burpees', '—')}\n"
+                f"🎥 *Видео:* {data.get('video', '—')}\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                f"📱 *Участник:* {username_part} `(id: {user.id})`"
+            ),
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+        )
+    except Exception as e:
+        logger.error("Organizers notification error: %s", e)
+
+    await update.message.reply_text(
+        "✅ <b>Заявка принята!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>ФИО:</b> {data.get('name', '—')}\n"
+        f"{category_icon} <b>Категория:</b> {data.get('category', '—')}\n"
+        f"🔥 <b>Берпи:</b> {data.get('burpees', '—')}\n"
+        f"🎥 <b>Видео:</b> {data.get('video', '—')}\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Удачи на старте! 💪\n\n"
+        "Посмотреть заявку: /mystatus",
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+
+
 async def sync_with_notion(context: ContextTypes.DEFAULT_TYPE) -> None:
     async with db_pool.acquire() as conn:
         rows = await conn.fetch(
@@ -376,36 +356,15 @@ async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # ── LIFECYCLE ────────────────────────────────────────────────────────
 
 async def post_init(app: Application) -> None:
-    global tg_bot, web_runner
-    tg_bot = app.bot
     await init_db()
-
-    aio_app = aiohttp_web.Application()
-    aio_app.router.add_route("OPTIONS", "/api/submit", api_submit)
-    aio_app.router.add_route("POST",    "/api/submit", api_submit)
-
-    web_runner = aiohttp_web.AppRunner(aio_app)
-    await web_runner.setup()
-    await aiohttp_web.TCPSite(web_runner, "0.0.0.0", API_PORT).start()
-    logger.info("Web server started on port %d", API_PORT)
-
-
-async def post_shutdown(app: Application) -> None:
-    if web_runner:
-        await web_runner.cleanup()
 
 
 def main() -> None:
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .post_init(post_init)
-        .post_shutdown(post_shutdown)
-        .build()
-    )
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start",    start))
     app.add_handler(CommandHandler("mystatus", mystatus))
     app.add_handler(CommandHandler("stats",    stats))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown))
     app.job_queue.run_repeating(sync_with_notion, interval=600, first=60)
     logger.info("Bot started")

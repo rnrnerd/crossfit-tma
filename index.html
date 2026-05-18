@@ -455,15 +455,10 @@
 
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
-  <img src="logo.png" alt="CrossFit Севастополь" style="width:140px;height:auto;margin-bottom:20px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
+  <img src="logo.png" alt="CrossFit Севастополь" style="width:160px;height:auto;margin-bottom:24px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
   <div class="success-title" id="success-title">Спасибо!</div>
   <div class="success-divider"></div>
   <div class="success-text" id="success-text">Мы получили твою заявку.<br>До встречи на старте!</div>
-  <div class="success-data" id="success-data"></div>
-  <div class="success-actions">
-    <button class="success-btn primary" id="edit-again-btn">✏️ Редактировать заявку</button>
-    <button class="success-btn secondary" id="close-btn">Закрыть</button>
-  </div>
 </div>
 
 <script>
@@ -481,10 +476,8 @@
     if (isStateStable) lockStatueHeight();
   });
 
-  // Читаем URL-параметры
-  const urlParams   = new URLSearchParams(window.location.search);
-  const apiUrl      = urlParams.get('api_url') || 'https://crossfit-tma-production.up.railway.app';
-  let   isEditMode  = urlParams.get('mode') === 'edit';
+  const urlParams        = new URLSearchParams(window.location.search);
+  const isEditMode       = urlParams.get('mode') === 'edit';
   let   selectedCategory = null;
 
   // Выбор категории
@@ -554,76 +547,34 @@
 
   if (isEditMode) applyEditMode();
 
-  // Показать экран успеха
-  function showSuccess(data, editMode) {
-    const icons = { 'Новички': '🟢', 'Любители': '🟡', 'Продвинутые': '🔴' };
-    document.getElementById('success-title').textContent = editMode ? 'Обновлено!' : 'Спасибо!';
-    document.getElementById('success-text').innerHTML    = editMode
-      ? 'Твоя заявка успешно обновлена.<br>До встречи на старте!'
-      : 'Мы получили твою заявку.<br>До встречи на старте!';
-    document.getElementById('success-data').innerHTML =
-      `<span>ФИО</span><br>${data.name}<br><br>` +
-      `<span>Категория</span><br>${icons[data.category] || ''} ${data.category}<br><br>` +
-      `<span>Берпи</span><br>${data.burpees}<br><br>` +
-      `<span>Видео</span><br>${data.video}`;
-    document.getElementById('header').classList.add('hidden');
-    document.getElementById('form').classList.add('hidden');
-    document.getElementById('success-screen').classList.add('visible');
-  }
-
-  // Вернуться к форме для редактирования
-  document.getElementById('edit-again-btn').addEventListener('click', () => {
-    isEditMode = true;
-    document.getElementById('success-screen').classList.remove('visible');
-    document.getElementById('header').classList.remove('hidden');
-    document.getElementById('form').classList.remove('hidden');
-    const submitBtn = document.getElementById('submit-btn');
-    submitBtn.disabled = false;
-    submitBtn.classList.remove('loading');
-    document.querySelector('.header-sub').textContent = 'Редактировать заявку';
-    submitBtn.childNodes[0].textContent = 'Сохранить изменения';
-  });
-
-  document.getElementById('close-btn').addEventListener('click', () => tg.close());
-
-  // Отправка формы
-  document.getElementById('form').addEventListener('submit', async e => {
+  document.getElementById('form').addEventListener('submit', e => {
     e.preventDefault();
     if (!validate()) return;
 
-    const submitBtn = document.getElementById('submit-btn');
-    submitBtn.disabled = true;
-    submitBtn.classList.add('loading');
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
 
-    const data = {
+    const payload = JSON.stringify({
       mode:     isEditMode ? 'edit' : 'new',
       name:     document.getElementById('name').value.trim(),
       category: selectedCategory,
       burpees:  Number(document.getElementById('burpees').value.trim()),
       video:    document.getElementById('video').value.trim(),
-    };
+    });
 
-    try {
-      const debugInfo = `apiUrl=${apiUrl}\ninitData=${tg.initData ? 'OK' : 'EMPTY'}\nuserId=${tg.initDataUnsafe?.user?.id}`;
-      console.log(debugInfo);
-      const res = await fetch(`${apiUrl}/api/submit`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          initData: tg.initData,
-          userId:   tg.initDataUnsafe?.user?.id,
-          data,
-        }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'error');
-      showSuccess(data, isEditMode);
-    } catch (err) {
-      console.error(err);
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('loading');
-      alert(`Ошибка: ${err.message}\napiUrl: ${apiUrl}\nuserId: ${tg.initDataUnsafe?.user?.id}`);
-    }
+    document.getElementById('success-title').textContent = isEditMode ? 'Обновлено!' : 'Спасибо!';
+    document.getElementById('success-text').innerHTML    = isEditMode
+      ? 'Твоя заявка успешно обновлена.<br>До встречи на старте!'
+      : 'Мы получили твою заявку.<br>До встречи на старте!';
+
+    document.getElementById('header').classList.add('hidden');
+    document.getElementById('form').classList.add('hidden');
+    document.getElementById('success-screen').classList.add('visible');
+
+    setTimeout(() => {
+      try { tg.sendData(payload); } catch (err) { console.error(err); }
+    }, 1500);
   });
 </script>
 </body>
