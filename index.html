@@ -607,7 +607,11 @@
       const res = await fetch(`${apiUrl}/api/submit`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ initData: tg.initData, data }),
+        body:    JSON.stringify({
+          initData: tg.initData,
+          userId:   tg.initDataUnsafe?.user?.id,
+          data,
+        }),
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || 'error');

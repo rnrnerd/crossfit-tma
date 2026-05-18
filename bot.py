@@ -187,7 +187,11 @@ async def api_submit(request: aiohttp_web.Request) -> aiohttp_web.Response:
 
     user_info = parse_init_data(body.get("initData", ""))
     if not user_info:
-        return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401, headers=CORS)
+        user_id_fallback = body.get("userId")
+        if not user_id_fallback:
+            return aiohttp_web.json_response({"ok": False, "error": "unauthorized"}, status=401, headers=CORS)
+        logger.warning("initData empty, using userId fallback: %s", user_id_fallback)
+        user_info = {"id": int(user_id_fallback)}
 
     user_id  = user_info["id"]
     data     = body.get("data", {})
