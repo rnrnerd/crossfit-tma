@@ -392,16 +392,19 @@ def _prop_url(prop) -> str:
 
 
 def _norm_gender(s: str) -> str:
-    s = (s or "").strip().lower()
-    if s in ("м", "муж", "мужчины", "мужской", "m", "male"):
+    # убираем пробелы (включая неразрывные/zero-width) и приводим к нижнему регистру
+    s = (s or "").replace(" ", "").replace("​", "").strip().lower()
+    if not s:
+        return ""
+    if s.startswith("муж") or s in ("м", "m", "male"):
         return "М"
-    if s in ("ж", "жен", "женщины", "женский", "f", "female"):
+    if s.startswith("жен") or s in ("ж", "f", "female"):
         return "Ж"
     return ""
 
 
 def _detect_gender(props: dict) -> str:
-    """Ищет пол среди всех свойств страницы — не зависит от названия колонки."""
+    """Ищет пол среди select/status/multi_select свойств — не зависит от названия колонки."""
     for prop in props.values():
         if not isinstance(prop, dict):
             continue
@@ -413,10 +416,6 @@ def _detect_gender(props: dict) -> str:
             candidates.append(prop["status"].get("name", ""))
         elif ptype == "multi_select":
             candidates.extend(o.get("name", "") for o in prop.get("multi_select", []))
-        elif ptype == "rich_text":
-            candidates.append("".join(x.get("plain_text", "") for x in prop.get("rich_text", [])))
-        elif ptype == "title":
-            candidates.append("".join(x.get("plain_text", "") for x in prop.get("title", [])))
         for c in candidates:
             g = _norm_gender(c)
             if g:
@@ -445,12 +444,23 @@ async def handle_results(request: web.Request) -> web.Response:
 
     category = request.query.get("category", "").strip()
     gender   = request.query.get("gender", "").strip()
+    debug    = request.query.get("debug", "").strip()
 
     try:
         pages = await fetch_notion_participants()
     except Exception as e:
         logger.error("Results fetch error: %s", e)
         return _cors(web.json_response({"error": "fetch_failed"}, status=500))
+
+    # Временная диагностика: ?debug=<часть ФИО> → сырые свойства участника
+    if debug:
+        out = []
+        for page in pages:
+            props = page.get("properties", {})
+            nm = _prop_title(props.get("ФИО"))
+            if debug.lower() in nm.lower():
+                out.append({"name": nm, "detected_gender": _detect_gender(props), "properties": props})
+        return _cors(web.json_response(out[:3]))
 
     items = []
     for page in pages:
