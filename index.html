@@ -384,6 +384,192 @@
     }
 
     .success-btn.secondary:active { background: var(--surface); }
+
+    /* ── REGISTRATION CLOSED / RESULTS ───────── */
+    .screen { display: none; }
+    .screen.visible { display: block; }
+
+    .closed-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 78vh;
+      text-align: center;
+      padding: 0 20px;
+    }
+    .closed-screen.visible { display: flex; }
+
+    .closed-screen img {
+      width: 140px;
+      height: auto;
+      margin-bottom: 22px;
+      animation: pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;
+    }
+
+    .closed-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .closed-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--gold);
+      margin: 0 auto 16px;
+    }
+
+    .closed-text {
+      font-size: 14px;
+      color: var(--hint);
+      line-height: 1.6;
+      max-width: 260px;
+      margin-bottom: 28px;
+    }
+
+    /* shared "angular" gold button */
+    .ghost-btn {
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 16px 28px;
+      border: none;
+      background: var(--gold);
+      color: #0D0D0D;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .ghost-btn:active { background: var(--gold-dark); transform: scale(0.99); }
+
+    /* ── RESULTS: header ─────────────────────── */
+    .results-head {
+      text-align: center;
+      padding: 26px 0 18px;
+    }
+    .results-head .results-sub {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 3.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .results-head .results-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    /* ── RESULTS: category buttons ───────────── */
+    .cat-block { margin-bottom: 20px; }
+    .cat-block-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--hint);
+      margin: 0 0 10px 2px;
+    }
+    .cat-row { display: flex; gap: 10px; }
+    .cat-btn {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      cursor: pointer;
+      font-family: 'Oswald', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      padding: 18px 8px;
+      text-align: center;
+      text-transform: uppercase;
+      transition: all 0.18s;
+    }
+    .cat-btn:active { border-color: var(--gold); background: var(--surface2); transform: scale(0.99); }
+    .cat-btn .cat-btn-gender { display: block; font-size: 15px; }
+    .cat-btn .cat-btn-hint { display: block; font-size: 10px; color: var(--hint); letter-spacing: 1.5px; margin-top: 3px; }
+
+    /* ── RESULTS: table ──────────────────────── */
+    .table-head {
+      text-align: center;
+      padding: 24px 0 18px;
+    }
+    .table-head .th-cat {
+      font-family: 'Oswald', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .table-head .th-gender {
+      font-family: 'Oswald', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--hint);
+      margin-top: 4px;
+    }
+
+    .res-table { width: 100%; border-collapse: collapse; }
+    .res-table th {
+      font-family: 'Oswald', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--hint);
+      text-align: left;
+      padding: 0 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .res-table th.num, .res-table td.num { text-align: center; width: 34px; }
+    .res-table th.score, .res-table td.score { text-align: right; width: 70px; white-space: nowrap; }
+    .res-table td {
+      font-size: 14px;
+      padding: 13px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .res-table tr:last-child td { border-bottom: none; }
+    .res-table td.rank { color: var(--gold); font-family: 'Oswald', sans-serif; font-weight: 700; }
+    .res-table td.score { font-family: 'Oswald', sans-serif; font-weight: 700; color: var(--gold); }
+    .res-table td.name a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--hint); }
+
+    .res-state {
+      text-align: center;
+      color: var(--hint);
+      font-size: 14px;
+      padding: 60px 20px;
+      line-height: 1.6;
+    }
+    .res-spinner {
+      width: 26px; height: 26px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin2 0.7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin2 { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -453,6 +639,33 @@
 
 </form>
 
+<!-- REGISTRATION CLOSED -->
+<div class="closed-screen screen" id="closed-screen">
+  <img src="logo.png" alt="CrossFit Севастополь" />
+  <div class="closed-title">Приём заявок<br>завершён</div>
+  <div class="closed-divider"></div>
+  <div class="closed-text">Спасибо всем за участие! 🔥<br>Результаты соревнования скоро будут доступны здесь.</div>
+  <button type="button" class="ghost-btn" id="open-results-btn" style="display:none;">Посмотреть результаты</button>
+</div>
+
+<!-- RESULTS: category selection -->
+<div class="screen" id="results-cats">
+  <div class="results-head">
+    <div class="results-sub">Битва за Херсонес 2026</div>
+    <div class="results-title">Результаты</div>
+  </div>
+  <div id="cat-buttons"></div>
+</div>
+
+<!-- RESULTS: table -->
+<div class="screen" id="results-table-screen">
+  <div class="table-head">
+    <div class="th-cat" id="table-cat"></div>
+    <div class="th-gender" id="table-gender"></div>
+  </div>
+  <div id="table-body"></div>
+</div>
+
 <!-- SUCCESS -->
 <div class="success-screen" id="success-screen">
   <img src="logo.png" alt="CrossFit Севастополь" style="width:130px;height:auto;margin-bottom:20px;animation:pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275) both;" />
@@ -480,6 +693,17 @@
   const urlParams        = new URLSearchParams(window.location.search);
   const isEditMode       = urlParams.get('mode') === 'edit';
   let   selectedCategory = null;
+
+  // ── РЕЖИМ РЕЗУЛЬТАТОВ (приём заявок завершён) ──────────────
+  const REGISTRATION_CLOSED = true;
+  // Доступ к результатам на этапе настройки — только эти Telegram ID.
+  // Когда откроем для всех — оставить массив пустым ИЛИ выставить RESULTS_PUBLIC = true.
+  const ADMIN_IDS     = [77180808];  // Telegram ID админов (доступ к результатам на этапе настройки)
+  const RESULTS_PUBLIC = false;       // true → результаты видны всем
+  const API_BASE      = 'https://crossfit-tma-production.up.railway.app';
+  const RES_CATS      = ['Новички', 'Любители', 'Продвинутые'];
+  const RES_GENDERS   = [{ code: 'М', label: 'Мужчины' }, { code: 'Ж', label: 'Женщины' }];
+  const CAT_ICON      = { 'Новички': '🟢', 'Любители': '🟡', 'Продвинутые': '🔴' };
 
   // Выбор категории
   document.querySelectorAll('.category-btn').forEach(btn => {
@@ -563,6 +787,7 @@
   });
 
   tg.BackButton.onClick(() => {
+    if (REGISTRATION_CLOSED) return;   // в режиме результатов навигацией управляет resultsBack()
     tg.BackButton.hide();
     tg.MainButton.hide();
     pendingPayload = null;
@@ -610,6 +835,114 @@
     tg.MainButton.show();
     tg.BackButton.show();
   });
+
+  // ── НАВИГАЦИЯ ПО РЕЗУЛЬТАТАМ ──────────────────────────────
+  function hideAllScreens() {
+    document.getElementById('header').classList.add('hidden');
+    document.getElementById('form').classList.add('hidden');
+    document.getElementById('success-screen').classList.remove('visible');
+    ['closed-screen', 'results-cats', 'results-table-screen']
+      .forEach(id => document.getElementById(id).classList.remove('visible'));
+  }
+
+  function goClosed() {
+    hideAllScreens();
+    document.getElementById('closed-screen').classList.add('visible');
+    tg.BackButton.hide();
+    window.scrollTo(0, 0);
+  }
+
+  function goCats() {
+    hideAllScreens();
+    document.getElementById('results-cats').classList.add('visible');
+    tg.BackButton.show();
+    window.scrollTo(0, 0);
+  }
+
+  function goTable(cat, genderCode) {
+    hideAllScreens();
+    document.getElementById('results-table-screen').classList.add('visible');
+    tg.BackButton.show();
+    window.scrollTo(0, 0);
+    loadTable(cat, genderCode);
+  }
+
+  function resultsBack() {
+    if (document.getElementById('results-table-screen').classList.contains('visible')) {
+      goCats();
+    } else if (document.getElementById('results-cats').classList.contains('visible')) {
+      goClosed();
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function buildCatButtons() {
+    const wrap = document.getElementById('cat-buttons');
+    wrap.innerHTML = RES_CATS.map(cat => `
+      <div class="cat-block">
+        <div class="cat-block-label">${CAT_ICON[cat] || ''} ${cat}</div>
+        <div class="cat-row">
+          ${RES_GENDERS.map(g => `
+            <button type="button" class="cat-btn" data-cat="${escHtml(cat)}" data-gender="${g.code}">
+              <span class="cat-btn-gender">${g.label}</span>
+            </button>`).join('')}
+        </div>
+      </div>`).join('');
+    wrap.querySelectorAll('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => goTable(btn.dataset.cat, btn.dataset.gender));
+    });
+  }
+
+  function renderTable(rows) {
+    const body = rows.map((p, i) => `
+      <tr>
+        <td class="num rank">${i + 1}</td>
+        <td class="name">${p.video ? `<a href="${escHtml(p.video)}" target="_blank" rel="noopener">${escHtml(p.name)}</a>` : escHtml(p.name)}</td>
+        <td class="score">${escHtml(p.burpees)}</td>
+      </tr>`).join('');
+    return `<table class="res-table">
+      <thead><tr><th class="num">#</th><th>ФИО</th><th class="score">Берпи</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  }
+
+  async function loadTable(cat, genderCode) {
+    const bodyEl = document.getElementById('table-body');
+    document.getElementById('table-cat').textContent    = cat;
+    document.getElementById('table-gender').textContent = (RES_GENDERS.find(g => g.code === genderCode) || {}).label || '';
+    bodyEl.innerHTML = `<div class="res-state"><div class="res-spinner"></div>Загрузка…</div>`;
+    try {
+      const url = `${API_BASE}/api/results?category=${encodeURIComponent(cat)}&gender=${encodeURIComponent(genderCode)}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const rows = await resp.json();
+      if (!Array.isArray(rows) || rows.length === 0) {
+        bodyEl.innerHTML = `<div class="res-state">В этой категории пока нет участников.</div>`;
+        return;
+      }
+      bodyEl.innerHTML = renderTable(rows);
+    } catch (err) {
+      console.error(err);
+      bodyEl.innerHTML = `<div class="res-state">Не удалось загрузить результаты.<br>Попробуйте позже.</div>`;
+    }
+  }
+
+  // ── ИНИЦИАЛИЗАЦИЯ РЕЖИМА РЕЗУЛЬТАТОВ ──────────────────────
+  if (REGISTRATION_CLOSED) {
+    const uid     = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
+    const isAdmin = RESULTS_PUBLIC || (uid && ADMIN_IDS.includes(uid));
+
+    buildCatButtons();
+    const openBtn = document.getElementById('open-results-btn');
+    openBtn.addEventListener('click', goCats);
+    if (isAdmin) openBtn.style.display = '';
+
+    tg.BackButton.onClick(() => { if (REGISTRATION_CLOSED) resultsBack(); });
+    goClosed();
+  }
 </script>
 </body>
 </html>
