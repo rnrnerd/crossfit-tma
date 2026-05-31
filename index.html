@@ -966,6 +966,12 @@
     openBtn.addEventListener('click', goCats);
     if (isAdmin) openBtn.style.display = '';
 
+    // ВРЕМЕННАЯ ДИАГНОСТИКА: показать обнаруженный Telegram ID
+    document.getElementById('closed-text').insertAdjacentHTML(
+      'afterend',
+      `<div style="color:#666;font-size:11px;margin-bottom:14px;">debug id: ${uid === null ? 'нет (initData пуст)' : uid}</div>`
+    );
+
     tg.BackButton.onClick(() => { if (REGISTRATION_CLOSED) resultsBack(); });
     goClosed();
   }
