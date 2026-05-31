@@ -550,6 +550,19 @@
       vertical-align: middle;
     }
     .res-table tr:last-child td { border-bottom: none; }
+    /* черта после 16-го места: первые 16 проходят в финал */
+    .res-table tr.finalist-cut td { border-bottom: 2px solid var(--gold); }
+
+    .results-total {
+      text-align: center;
+      font-family: 'Oswald', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--hint);
+      margin-top: 8px;
+    }
     .res-table td.rank { color: var(--gold); font-family: 'Oswald', sans-serif; font-weight: 700; }
     .res-table td.score { font-family: 'Oswald', sans-serif; font-weight: 700; color: var(--gold); }
     .res-table td.name a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--hint); }
@@ -655,6 +668,7 @@
     <div class="results-title">Результаты</div>
   </div>
   <div id="cat-buttons"></div>
+  <div class="results-total" id="results-total"></div>
 </div>
 
 <!-- RESULTS: table -->
@@ -857,6 +871,18 @@
     document.getElementById('results-cats').classList.add('visible');
     tg.BackButton.show();
     window.scrollTo(0, 0);
+    loadTotal();
+  }
+
+  async function loadTotal() {
+    const el = document.getElementById('results-total');
+    el.textContent = '';
+    try {
+      const resp = await fetch(`${API_BASE}/api/results`);
+      if (!resp.ok) return;
+      const all = await resp.json();
+      if (Array.isArray(all)) el.textContent = `Всего участников: ${all.length}`;
+    } catch (e) { /* молча */ }
   }
 
   function goTable(cat, genderCode) {
@@ -883,7 +909,7 @@
     const wrap = document.getElementById('cat-buttons');
     wrap.innerHTML = RES_CATS.map(cat => `
       <div class="cat-block">
-        <div class="cat-block-label">${CAT_ICON[cat] || ''} ${cat}</div>
+        <div class="cat-block-label">${cat}</div>
         <div class="cat-row">
           ${RES_GENDERS.map(g => `
             <button type="button" class="cat-btn" data-cat="${escHtml(cat)}" data-gender="${g.code}">
@@ -898,7 +924,7 @@
 
   function renderTable(rows) {
     const body = rows.map((p, i) => `
-      <tr>
+      <tr${i === 15 ? ' class="finalist-cut"' : ''}>
         <td class="num rank">${i + 1}</td>
         <td class="name">${escHtml(p.name)}</td>
         <td class="score">${escHtml(p.burpees)}</td>
