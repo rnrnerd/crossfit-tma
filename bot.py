@@ -160,7 +160,7 @@ def _webapp_url(is_admin: bool = False, extra: dict = None) -> str:
 
 def main_keyboard(is_admin: bool = False):
     return ReplyKeyboardMarkup(
-        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=_webapp_url(is_admin)))]],
+        [[KeyboardButton(text="🏆 Посмотреть результаты", web_app=WebAppInfo(url=_webapp_url(is_admin)))]],
         resize_keyboard=True,
     )
 
