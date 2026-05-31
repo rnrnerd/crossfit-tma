@@ -900,7 +900,7 @@
     const body = rows.map((p, i) => `
       <tr>
         <td class="num rank">${i + 1}</td>
-        <td class="name">${p.video ? `<a href="${escHtml(p.video)}" target="_blank" rel="noopener">${escHtml(p.name)}</a>` : escHtml(p.name)}</td>
+        <td class="name">${escHtml(p.name)}</td>
         <td class="score">${escHtml(p.burpees)}</td>
       </tr>`).join('');
     return `<table class="res-table">

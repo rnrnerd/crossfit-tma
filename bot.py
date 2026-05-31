@@ -444,23 +444,12 @@ async def handle_results(request: web.Request) -> web.Response:
 
     category = request.query.get("category", "").strip()
     gender   = request.query.get("gender", "").strip()
-    debug    = request.query.get("debug", "").strip()
 
     try:
         pages = await fetch_notion_participants()
     except Exception as e:
         logger.error("Results fetch error: %s", e)
         return _cors(web.json_response({"error": "fetch_failed"}, status=500))
-
-    # Временная диагностика: ?debug=<часть ФИО> → сырые свойства участника
-    if debug:
-        out = []
-        for page in pages:
-            props = page.get("properties", {})
-            nm = _prop_title(props.get("ФИО"))
-            if debug.lower() in nm.lower():
-                out.append({"name": nm, "detected_gender": _detect_gender(props), "properties": props})
-        return _cors(web.json_response(out[:3]))
 
     items = []
     for page in pages:
