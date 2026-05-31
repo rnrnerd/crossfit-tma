@@ -391,6 +391,39 @@ def _prop_url(prop) -> str:
     return ((prop.get("url") or "") if prop else "").strip()
 
 
+def _norm_gender(s: str) -> str:
+    s = (s or "").strip().lower()
+    if s in ("м", "муж", "мужчины", "мужской", "m", "male"):
+        return "М"
+    if s in ("ж", "жен", "женщины", "женский", "f", "female"):
+        return "Ж"
+    return ""
+
+
+def _detect_gender(props: dict) -> str:
+    """Ищет пол среди всех свойств страницы — не зависит от названия колонки."""
+    for prop in props.values():
+        if not isinstance(prop, dict):
+            continue
+        ptype = prop.get("type")
+        candidates = []
+        if ptype == "select" and prop.get("select"):
+            candidates.append(prop["select"].get("name", ""))
+        elif ptype == "status" and prop.get("status"):
+            candidates.append(prop["status"].get("name", ""))
+        elif ptype == "multi_select":
+            candidates.extend(o.get("name", "") for o in prop.get("multi_select", []))
+        elif ptype == "rich_text":
+            candidates.append("".join(x.get("plain_text", "") for x in prop.get("rich_text", [])))
+        elif ptype == "title":
+            candidates.append("".join(x.get("plain_text", "") for x in prop.get("title", [])))
+        for c in candidates:
+            g = _norm_gender(c)
+            if g:
+                return g
+    return ""
+
+
 async def fetch_notion_participants() -> list:
     pages, cursor = [], None
     while True:
@@ -423,7 +456,7 @@ async def handle_results(request: web.Request) -> web.Response:
     for page in pages:
         props = page.get("properties", {})
         cats  = _prop_multi(props.get("Категория"))
-        g     = _prop_select(props.get("Пол"))
+        g     = _detect_gender(props)
         if category and category not in cats:
             continue
         if gender and g != gender:
