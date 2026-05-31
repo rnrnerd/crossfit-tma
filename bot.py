@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import asyncpg
-from html import escape
+from aiohttp import web
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from dotenv import load_dotenv
@@ -360,10 +360,107 @@ async def handle_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await start(update, context)
 
 
+# ── HTTP API (результаты для TMA) ────────────────────────────────────
+
+def _cors(resp: web.StreamResponse) -> web.StreamResponse:
+    resp.headers["Access-Control-Allow-Origin"]  = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
+
+
+def _prop_title(prop) -> str:
+    arr = prop.get("title", []) if prop else []
+    return "".join(t.get("plain_text", "") for t in arr).strip()
+
+
+def _prop_select(prop) -> str:
+    sel = prop.get("select") if prop else None
+    return (sel.get("name", "") if sel else "").strip()
+
+
+def _prop_multi(prop) -> list:
+    return [o.get("name", "").strip() for o in (prop.get("multi_select", []) if prop else [])]
+
+
+def _prop_number(prop):
+    return (prop.get("number") if prop else None)
+
+
+def _prop_url(prop) -> str:
+    return ((prop.get("url") or "") if prop else "").strip()
+
+
+async def fetch_notion_participants() -> list:
+    pages, cursor = [], None
+    while True:
+        kwargs = {"database_id": NOTION_DATABASE_ID, "page_size": 100}
+        if cursor:
+            kwargs["start_cursor"] = cursor
+        resp = await notion.databases.query(**kwargs)
+        pages.extend(resp.get("results", []))
+        if resp.get("has_more"):
+            cursor = resp.get("next_cursor")
+        else:
+            break
+    return pages
+
+
+async def handle_results(request: web.Request) -> web.Response:
+    if request.method == "OPTIONS":
+        return _cors(web.Response(status=204))
+
+    category = request.query.get("category", "").strip()
+    gender   = request.query.get("gender", "").strip()
+
+    try:
+        pages = await fetch_notion_participants()
+    except Exception as e:
+        logger.error("Results fetch error: %s", e)
+        return _cors(web.json_response({"error": "fetch_failed"}, status=500))
+
+    items = []
+    for page in pages:
+        props = page.get("properties", {})
+        cats  = _prop_multi(props.get("Категория"))
+        g     = _prop_select(props.get("Пол"))
+        if category and category not in cats:
+            continue
+        if gender and g != gender:
+            continue
+        items.append({
+            "name":    _prop_title(props.get("ФИО")),
+            "burpees": _prop_number(props.get("Берпи")) or 0,
+            "video":   _prop_url(props.get("Видео")),
+            "gender":  g,
+        })
+
+    items.sort(key=lambda x: x["burpees"], reverse=True)
+    return _cors(web.json_response(items))
+
+
+async def handle_health(request: web.Request) -> web.Response:
+    return web.Response(text="ok")
+
+
+async def start_web_server() -> None:
+    web_app = web.Application()
+    web_app.router.add_get("/", handle_health)
+    web_app.router.add_get("/api/results", handle_results)
+    web_app.router.add_options("/api/results", handle_results)
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", "8080"))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info("HTTP server started on port %s", port)
+
+
 # ── LIFECYCLE ────────────────────────────────────────────────────────
 
 async def post_init(app: Application) -> None:
     await init_db()
+    await start_web_server()
 
 
 def main() -> None:
