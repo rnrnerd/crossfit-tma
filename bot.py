@@ -476,10 +476,11 @@ async def handle_results(request: web.Request) -> web.Response:
         if gender and g != gender:
             continue
         items.append({
-            "name":    _prop_title(props.get("ФИО")),
-            "burpees": _prop_number(props.get("Берпи")) or 0,
-            "video":   _prop_url(props.get("Видео")),
-            "gender":  g,
+            "name":       _prop_title(props.get("ФИО")),
+            "burpees":    _prop_number(props.get("Берпи")) or 0,
+            "video":      _prop_url(props.get("Видео")),
+            "gender":     g,
+            "categories": cats,
         })
 
     items.sort(key=lambda x: x["burpees"], reverse=True)

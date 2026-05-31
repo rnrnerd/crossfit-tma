@@ -505,6 +505,7 @@
     .cat-btn:active { border-color: var(--gold); background: var(--surface2); transform: scale(0.99); }
     .cat-btn .cat-btn-gender { display: block; font-size: 15px; }
     .cat-btn .cat-btn-hint { display: block; font-size: 10px; color: var(--hint); letter-spacing: 1.5px; margin-top: 3px; }
+    .cat-btn .cat-btn-count { display: block; font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 500; color: var(--hint); margin-top: 4px; }
 
     /* ── RESULTS: table ──────────────────────── */
     .table-head {
@@ -538,8 +539,12 @@
       text-transform: uppercase;
       color: var(--hint);
       text-align: left;
-      padding: 0 8px 10px;
+      padding: 10px 8px;
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 2;
     }
     .res-table th.num, .res-table td.num { text-align: center; width: 34px; }
     .res-table th.score, .res-table td.score { text-align: right; width: 70px; white-space: nowrap; }
@@ -550,7 +555,8 @@
       vertical-align: middle;
     }
     .res-table tr:last-child td { border-bottom: none; }
-    /* черта после 16-го места: первые 16 проходят в финал */
+    /* первые 16 проходят в финал — золотистая подложка + черта после 16-го */
+    .res-table tr.finalist td { background: rgba(242,196,64,0.07); }
     .res-table tr.finalist-cut td { border-bottom: 2px solid var(--gold); }
 
     .results-total {
@@ -871,17 +877,23 @@
     document.getElementById('results-cats').classList.add('visible');
     tg.BackButton.show();
     window.scrollTo(0, 0);
-    loadTotal();
+    loadCounts();
   }
 
-  async function loadTotal() {
+  async function loadCounts() {
     const el = document.getElementById('results-total');
     el.textContent = '';
     try {
       const resp = await fetch(`${API_BASE}/api/results`);
       if (!resp.ok) return;
       const all = await resp.json();
-      if (Array.isArray(all)) el.textContent = `Всего участников: ${all.length}`;
+      if (!Array.isArray(all)) return;
+      el.textContent = `Всего участников: ${all.length}`;
+      document.querySelectorAll('.cat-btn-count').forEach(span => {
+        const c = span.dataset.c, g = span.dataset.g;
+        const n = all.filter(p => Array.isArray(p.categories) && p.categories.includes(c) && p.gender === g).length;
+        span.textContent = n;
+      });
     } catch (e) { /* молча */ }
   }
 
@@ -914,6 +926,7 @@
           ${RES_GENDERS.map(g => `
             <button type="button" class="cat-btn" data-cat="${escHtml(cat)}" data-gender="${g.code}">
               <span class="cat-btn-gender">${g.label}</span>
+              <span class="cat-btn-count" data-c="${escHtml(cat)}" data-g="${g.code}"></span>
             </button>`).join('')}
         </div>
       </div>`).join('');
@@ -924,7 +937,7 @@
 
   function renderTable(rows) {
     const body = rows.map((p, i) => `
-      <tr${i === 15 ? ' class="finalist-cut"' : ''}>
+      <tr class="${i < 16 ? 'finalist' : ''}${i === 15 ? ' finalist-cut' : ''}">
         <td class="num rank">${i + 1}</td>
         <td class="name">${escHtml(p.name)}</td>
         <td class="score">${escHtml(p.burpees)}</td>
