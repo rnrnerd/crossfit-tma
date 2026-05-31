@@ -967,10 +967,10 @@
     if (isAdmin) openBtn.style.display = '';
 
     // ВРЕМЕННАЯ ДИАГНОСТИКА: показать обнаруженный Telegram ID
-    document.getElementById('closed-text').insertAdjacentHTML(
-      'afterend',
-      `<div style="color:#666;font-size:11px;margin-bottom:14px;">debug id: ${uid === null ? 'нет (initData пуст)' : uid}</div>`
-    );
+    const dbg = document.createElement('div');
+    dbg.style.cssText = 'color:#888;font-size:12px;margin-bottom:14px;word-break:break-all;';
+    dbg.textContent = 'debug id: ' + (uid === null || uid === undefined ? 'нет (initData пуст)' : uid);
+    document.querySelector('.closed-text').insertAdjacentElement('afterend', dbg);
 
     tg.BackButton.onClick(() => { if (REGISTRATION_CLOSED) resultsBack(); });
     goClosed();
