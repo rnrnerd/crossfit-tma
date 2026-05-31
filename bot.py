@@ -174,7 +174,7 @@ def edit_keyboard(row, is_admin: bool = False):
         "video":    row["video"],
     })
     return ReplyKeyboardMarkup(
-        [[KeyboardButton(text="✏️ Редактировать заявку", web_app=WebAppInfo(url=edit_url))]],
+        [[KeyboardButton(text="🏆 Посмотреть результаты", web_app=WebAppInfo(url=edit_url))]],
         resize_keyboard=True,
     )
 
