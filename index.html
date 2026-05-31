@@ -712,8 +712,9 @@
   const REGISTRATION_CLOSED = true;
   // Доступ к результатам на этапе настройки — только эти Telegram ID.
   // Когда откроем для всех — оставить массив пустым ИЛИ выставить RESULTS_PUBLIC = true.
-  const ADMIN_IDS     = [77180808];  // Telegram ID админов (доступ к результатам на этапе настройки)
+  const ADMIN_IDS     = [77180808];  // Telegram ID админов (запасной способ, если initData доступен)
   const RESULTS_PUBLIC = false;       // true → результаты видны всем
+  const RESULTS_KEY   = 'hrs2026key'; // секрет: бот добавляет ?key=... в адрес только для админов
   const API_BASE      = 'https://crossfit-tma-production.up.railway.app';
   const RES_CATS      = ['Новички', 'Любители', 'Продвинутые'];
   const RES_GENDERS   = [{ code: 'М', label: 'Мужчины' }, { code: 'Ж', label: 'Женщины' }];
@@ -959,18 +960,13 @@
   // ── ИНИЦИАЛИЗАЦИЯ РЕЖИМА РЕЗУЛЬТАТОВ ──────────────────────
   if (REGISTRATION_CLOSED) {
     const uid     = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : null;
-    const isAdmin = RESULTS_PUBLIC || (uid && ADMIN_IDS.includes(uid));
+    const hasKey  = urlParams.get('key') === RESULTS_KEY;
+    const isAdmin = RESULTS_PUBLIC || hasKey || (uid && ADMIN_IDS.includes(uid));
 
     buildCatButtons();
     const openBtn = document.getElementById('open-results-btn');
     openBtn.addEventListener('click', goCats);
     if (isAdmin) openBtn.style.display = '';
-
-    // ВРЕМЕННАЯ ДИАГНОСТИКА: показать обнаруженный Telegram ID
-    const dbg = document.createElement('div');
-    dbg.style.cssText = 'color:#888;font-size:12px;margin-bottom:14px;word-break:break-all;';
-    dbg.textContent = 'debug id: ' + (uid === null || uid === undefined ? 'нет (initData пуст)' : uid);
-    document.querySelector('.closed-text').insertAdjacentElement('afterend', dbg);
 
     tg.BackButton.onClick(() => { if (REGISTRATION_CLOSED) resultsBack(); });
     goClosed();

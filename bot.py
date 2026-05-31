@@ -143,23 +143,36 @@ async def update_notion_page(page_id: str, data: dict) -> None:
 
 # ── KEYBOARDS ────────────────────────────────────────────────────────
 
-def main_keyboard():
+# Секрет: добавляется в адрес TMA только для админов → открывает доступ к результатам.
+RESULTS_KEY = "hrs2026key"
+
+
+def _webapp_url(is_admin: bool = False, extra: dict = None) -> str:
+    params = dict(extra or {})
+    if is_admin:
+        params["key"] = RESULTS_KEY
+    url = WEBAPP_URL
+    if params:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}{urlencode(params)}"
+    return url
+
+
+def main_keyboard(is_admin: bool = False):
     return ReplyKeyboardMarkup(
-        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=WEBAPP_URL))]],
+        [[KeyboardButton(text="📋 Загрузить результаты", web_app=WebAppInfo(url=_webapp_url(is_admin)))]],
         resize_keyboard=True,
     )
 
 
-def edit_keyboard(row):
-    params = urlencode({
+def edit_keyboard(row, is_admin: bool = False):
+    edit_url = _webapp_url(is_admin, extra={
         "mode":     "edit",
         "name":     row["name"],
         "category": row["category"],
         "burpees":  row["burpees"],
         "video":    row["video"],
     })
-    sep      = "&" if "?" in WEBAPP_URL else "?"
-    edit_url = f"{WEBAPP_URL}{sep}{params}"
     return ReplyKeyboardMarkup(
         [[KeyboardButton(text="✏️ Редактировать заявку", web_app=WebAppInfo(url=edit_url))]],
         resize_keyboard=True,
@@ -169,8 +182,9 @@ def edit_keyboard(row):
 # ── HANDLERS ─────────────────────────────────────────────────────────
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    row  = await get_submission(user.id)
+    user     = update.effective_user
+    is_admin = user.id in ADMIN_IDS
+    row      = await get_submission(user.id)
 
     if row:
         category_icon = CATEGORIES.get(row["category"], "⚪️")
@@ -188,31 +202,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             await update.message.reply_text(
                 text, parse_mode="HTML", disable_web_page_preview=True,
-                reply_markup=edit_keyboard(row),
+                reply_markup=edit_keyboard(row, is_admin),
             )
         except Exception:
             await update.message.reply_text(
                 text, parse_mode="HTML", disable_web_page_preview=True,
-                reply_markup=main_keyboard(),
+                reply_markup=main_keyboard(is_admin),
             )
         return
 
     await update.message.reply_text(
         "Привет! 🔥\nЧтобы загрузить твои результаты, нажми на кнопку ниже",
-        reply_markup=main_keyboard(),
+        reply_markup=main_keyboard(is_admin),
     )
 
 
 async def mystatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    row  = await get_submission(user.id)
+    user     = update.effective_user
+    is_admin = user.id in ADMIN_IDS
+    row      = await get_submission(user.id)
 
     if not row:
         await update.message.reply_text(
             "📭 Вы ещё не подавали заявку.\n\n"
             "Нажмите кнопку <b>«Загрузить результаты»</b> чтобы подать.",
             parse_mode="HTML",
-            reply_markup=main_keyboard(),
+            reply_markup=main_keyboard(is_admin),
         )
         return
 
@@ -229,7 +244,7 @@ async def mystatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"🕐 Подана: {submitted_at}",
         parse_mode="HTML",
         disable_web_page_preview=True,
-        reply_markup=edit_keyboard(row),
+        reply_markup=edit_keyboard(row, is_admin),
     )
 
 
