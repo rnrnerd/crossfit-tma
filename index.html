@@ -723,6 +723,12 @@
   const API_BASE      = 'https://crossfit-tma-production.up.railway.app';
   const RES_CATS      = ['Новички', 'Любители', 'Продвинутые'];
   const RES_GENDERS   = [{ code: 'М', label: 'Мужчины' }, { code: 'Ж', label: 'Женщины' }];
+  // число проходящих в финал (подсвечиваемая граница) по категории+полу
+  const RES_CUTOFFS   = {
+    'Новички|М': 17,    'Новички|Ж': 18,
+    'Любители|М': 17,   'Любители|Ж': 16,
+    'Продвинутые|М': 17, 'Продвинутые|Ж': 15,
+  };
   const CAT_ICON      = { 'Новички': '🟢', 'Любители': '🟡', 'Продвинутые': '🔴' };
 
   // Выбор категории
@@ -935,9 +941,10 @@
     });
   }
 
-  function renderTable(rows) {
+  function renderTable(rows, cutoff) {
+    cutoff = cutoff || 16;
     const body = rows.map((p, i) => `
-      <tr class="${i < 16 ? 'finalist' : ''}${i === 15 ? ' finalist-cut' : ''}">
+      <tr class="${i < cutoff ? 'finalist' : ''}${i === cutoff - 1 ? ' finalist-cut' : ''}">
         <td class="num rank">${i + 1}</td>
         <td class="name">${escHtml(p.name)}</td>
         <td class="score">${escHtml(p.burpees)}</td>
@@ -962,7 +969,7 @@
         bodyEl.innerHTML = `<div class="res-state">В этой категории пока нет участников.</div>`;
         return;
       }
-      bodyEl.innerHTML = renderTable(rows);
+      bodyEl.innerHTML = renderTable(rows, RES_CUTOFFS[cat + '|' + genderCode]);
     } catch (err) {
       console.error(err);
       bodyEl.innerHTML = `<div class="res-state">Не удалось загрузить результаты.<br>Попробуйте позже.</div>`;
